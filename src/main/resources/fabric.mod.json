@@ -1,29 +1,29 @@
 {
   "schemaVersion": 1,
-  "id": "modid",
+  "id": "withery",
   "version": "${version}",
 
-  "name": "Example Mod",
-  "description": "This is an example description! Tell everyone what your mod is about!",
+  "name": "Withery",
+  "description": "Withery aims to overhaul wither-related stuff in Minecraft, giving them a deeper meaning.",
   "authors": [
-    "Me!"
+    "GeeLeonidas"
   ],
   "contact": {
-    "homepage": "https://fabricmc.net/",
-    "sources": "https://github.com/FabricMC/fabric-example-mod"
+    "homepage": "",
+    "sources": "https://github.com/GeeLeonidas/withery"
   },
 
-  "license": "CC0-1.0",
-  "icon": "assets/modid/icon.png",
+  "license": "GPL-3.0",
+  "icon": "assets/withery/icon.png",
 
   "environment": "*",
   "entrypoints": {
     "main": [
-      "net.fabricmc.example.ExampleModKt::init"
+      "io.github.geeleonidas.withery.WitheryKt::init"
     ]
   },
   "mixins": [
-    "modid.mixins.json"
+    "withery.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.8.7",
@@ -32,6 +32,6 @@
     "minecraft": "1.16.x"
   },
   "suggests": {
-    "flamingo": "*"
+    "stubborn": "*"
   }
 }
