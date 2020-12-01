@@ -20,6 +20,9 @@
   "entrypoints": {
     "main": [
       "io.github.geeleonidas.withery.WitheryKt::init"
+    ],
+    "client": [
+      "io.github.geeleonidas.withery.client.WitheryClientKt::init"
     ]
   },
   "mixins": [
