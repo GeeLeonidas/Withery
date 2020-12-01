@@ -31,6 +31,35 @@ class SoulEntityRenderer(entityRenderDispatcher: EntityRenderDispatcher):
     }
 
     override fun render(entity: SoulEntity, yaw: Float, tickDelta: Float, matrices: MatrixStack, vertexConsumers: VertexConsumerProvider, light: Int) {
+        matrices.push()
+
+        // UV Settings
+        val ux = 0f
+        val uy = 1f
+        val vx = 0f
+        val vy = 1f
+
+        // Basic config (entity will be facing the player)
+        matrices.scale(0.5f, 0.5f, 0.5f)
+        matrices.translate(0.0, -0.125, 0.0)
+        matrices.multiply(this.renderManager.rotation)
+        matrices.multiply(Vector3f.POSITIVE_Y.getDegreesQuaternion(180F))
+
+        // Who doesn't like details?
+        val time = entity.age + tickDelta
+        matrices.translate(0.0, sin(time * PI / 20), 0.0)
+
+        // Don't ask me, I don't know either
+        val vertexConsumer = vertexConsumers.getBuffer(textureLayer)
+        val entry = matrices.peek()
+        val matrix4f = entry.model
+        val matrix3f = entry.normal
+        draw(vertexConsumer, matrix4f, matrix3f, -0.5f, -0.25f, 255, ux, vy)
+        draw(vertexConsumer, matrix4f, matrix3f, 0.5f, -0.25f, 255, uy, vy)
+        draw(vertexConsumer, matrix4f, matrix3f, 0.5f, 0.75f, 255, uy, vx)
+        draw(vertexConsumer, matrix4f, matrix3f, -0.5f, 0.75f, 255, ux, vx)
+
+        matrices.pop()
         super.render(entity, yaw, tickDelta, matrices, vertexConsumers, light)
     }
 
