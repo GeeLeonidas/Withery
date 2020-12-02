@@ -46,7 +46,7 @@ class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, w
     }
 
     override fun tick() {
-        if (this.age % 20 == 0)
+        if (this.age % 60 == 0)
             Withery.log(boundEntity?.uuidAsString ?: "No UUID")
         super.tick()
     }
