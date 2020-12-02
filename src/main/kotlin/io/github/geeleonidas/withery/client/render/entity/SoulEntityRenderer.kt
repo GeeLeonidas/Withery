@@ -54,16 +54,16 @@ class SoulEntityRenderer(entityRenderDispatcher: EntityRenderDispatcher):
         val entry = matrices.peek()
         val matrix4f = entry.model
         val matrix3f = entry.normal
-        draw(vertexConsumer, matrix4f, matrix3f, -0.5f, -0.25f, 255, ux, vy)
-        draw(vertexConsumer, matrix4f, matrix3f, 0.5f, -0.25f, 255, uy, vy)
-        draw(vertexConsumer, matrix4f, matrix3f, 0.5f, 0.75f, 255, uy, vx)
-        draw(vertexConsumer, matrix4f, matrix3f, -0.5f, 0.75f, 255, ux, vx)
+        draw(vertexConsumer, matrix4f, matrix3f, -0.5f, -0.25f, ux, vy)
+        draw(vertexConsumer, matrix4f, matrix3f, 0.5f, -0.25f, uy, vy)
+        draw(vertexConsumer, matrix4f, matrix3f, 0.5f, 0.75f, uy, vx)
+        draw(vertexConsumer, matrix4f, matrix3f, -0.5f, 0.75f, ux, vx)
 
         matrices.pop()
         super.render(entity, yaw, tickDelta, matrices, vertexConsumers, light)
     }
 
-    private fun draw(vertexConsumer: VertexConsumer, matrix4f: Matrix4f, matrix3f: Matrix3f, x: Float, y: Float, alpha: Int, u: Float, v: Float) {
+    private fun draw(vertexConsumer: VertexConsumer, matrix4f: Matrix4f, matrix3f: Matrix3f, x: Float, y: Float, u: Float, v: Float, alpha: Int = 255) {
         vertexConsumer.vertex(matrix4f, x, y, 0.0f).color(255, 255, 255, alpha).texture(u, v).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0f, 1.0f, 0.0f).next()
     }
 
