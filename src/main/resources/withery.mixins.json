@@ -5,7 +5,8 @@
   "mixins": [
     "ClientPlayNetworkHandlerMixin",
     "LivingEntityMixin",
-    "ServerWorldMixin"
+    "ServerWorldMixin",
+    "StatusEffectMixin"
   ],
   "client": [
   ],

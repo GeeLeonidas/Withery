@@ -19,58 +19,50 @@ import net.minecraft.world.World
 import java.util.*
 
 class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, world) {
-    @Environment(EnvType.CLIENT) val offsetX = this.random.nextDouble() * 2.0 - 1.0
-    @Environment(EnvType.CLIENT) val offsetY = this.random.nextDouble() * 0.75 + 0.5
-    @Environment(EnvType.CLIENT) val offsetZ = this.random.nextDouble() * 2.0 - 1.0
-
-    companion object {
-        val trackedBoundEntityID: TrackedData<Int> =
-            DataTracker.registerData(SoulEntity::class.java, TrackedDataHandlerRegistry.INTEGER)
-    }
-
-    var boundEntity: LivingEntity? = null
+    var boundEntityUuid: UUID? = null
+    var boundEntityId = -0xDEAD
+    var boundEntity: LivingEntity?
+        get() = world.getEntityById(boundEntityId) as LivingEntity?
         set(value) {
-            dataTracker.set(trackedBoundEntityID, value?.entityId ?: -0xDEAD)
-            field = value
+            if (value != null) {
+                boundEntityId = value.entityId
+                boundEntityUuid = value.uuid
+            } else {
+                boundEntityId = -0xDEAD
+                boundEntityUuid = null
+            }
         }
-    val boundEntityId: Int
-        get() = dataTracker.get(trackedBoundEntityID)
 
     constructor(world: World, x: Double, y: Double, z: Double): this(Withery.soulEntityType, world) {
         this.updatePosition(x, y, z)
     }
 
-    constructor(world: World, boundEntity: LivingEntity): this(Withery.soulEntityType, world) {
+    constructor(boundEntity: LivingEntity): this(Withery.soulEntityType, boundEntity.world) {
         this.updatePosition(boundEntity.x, boundEntity.y, boundEntity.z)
         this.boundEntity = boundEntity
     }
 
     override fun tick() {
         if (this.age % 60 == 0)
-            Withery.log(boundEntity?.uuidAsString ?: "No UUID")
+            Withery.log(boundEntity?.entityId ?: "No entityId")
         super.tick()
     }
 
-    override fun initDataTracker() {
-        dataTracker.startTracking(trackedBoundEntityID, -0xDEAD)
-    }
+    override fun initDataTracker() = Unit
 
     override fun readCustomDataFromTag(tag: CompoundTag) {
-        if (tag.contains("bound_uuid")) {
-            if (!world.isClient) {
-                Withery.log("AA")
-                val uuid = tag.getUuid("bound_uuid")
-                boundEntity = (world as WitheryServerWorld).getEntityByUuid(uuid) as LivingEntity?
-            }
-            else
-                boundEntity = world.getEntityById(boundEntityId) as LivingEntity?
-        }
+        if (!world.isClient && tag.contains("bound_uuid"))
+            boundEntityUuid = tag.getUuid("bound_uuid")
     }
 
     override fun writeCustomDataToTag(tag: CompoundTag) {
-        if (boundEntity != null)
-            tag.putUuid("bound_uuid", boundEntity!!.uuid)
+        if (!world.isClient && boundEntityUuid != null)
+            tag.putUuid("bound_uuid", boundEntityUuid!!)
     }
 
-    override fun createSpawnPacket(): Packet<*> = SoulSpawnS2CPacket(this)
+    override fun createSpawnPacket(): Packet<*> {
+        if (boundEntityUuid != null)
+            boundEntityId = (world as WitheryServerWorld).getEntityByUuid(boundEntityUuid)?.entityId ?: -0xDEAD
+        return SoulSpawnS2CPacket(this)
+    }
 }
