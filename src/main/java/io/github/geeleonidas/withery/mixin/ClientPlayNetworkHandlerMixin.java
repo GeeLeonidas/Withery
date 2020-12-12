@@ -33,7 +33,7 @@ public abstract class ClientPlayNetworkHandlerMixin implements WitheryClientPlay
             soulEntity = new SoulEntity((LivingEntity) bound);
             soulEntity.updateTrackedPosition(bound.getPos());
         } else {
-            Withery.INSTANCE.log("Entity not found.", Level.INFO);
+            Withery.INSTANCE.log("Bound entity not found.", Level.INFO);
             double x = packet.getX();
             double y = packet.getY();
             double z = packet.getZ();

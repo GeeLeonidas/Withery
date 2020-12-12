@@ -4,7 +4,6 @@ import io.github.geeleonidas.withery.entity.SoulEntity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -16,9 +15,8 @@ public class StatusEffectMixin {
     @Inject(at = @At("HEAD"), method = "applyUpdateEffect", cancellable = true)
     public void applyUpdateEffect(LivingEntity entity, int amplifier, CallbackInfo ci) {
         boolean isSoulHarvestValid =
-            (entity instanceof PlayerEntity? !((PlayerEntity) entity).isCreative() : true) &&
+            entity.isAlive() && entity.hurtTime == 0 && !entity.isInvulnerable() &&
             entity.world.getRegistryKey() != World.NETHER &&
-            entity.isAlive() && entity.hurtTime == 0 &&
             this.equals(StatusEffects.WITHER);
         if (isSoulHarvestValid) {
             entity.world.spawnEntity(new SoulEntity(entity));

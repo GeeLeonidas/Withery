@@ -2,19 +2,13 @@ package io.github.geeleonidas.withery.entity
 
 import io.github.geeleonidas.withery.Withery
 import io.github.geeleonidas.withery.network.SoulSpawnS2CPacket
+import io.github.geeleonidas.withery.util.WitheryLivingEntity
 import io.github.geeleonidas.withery.util.WitheryServerWorld
-import net.fabricmc.api.EnvType
-import net.fabricmc.api.Environment
-import net.minecraft.client.world.ClientWorld
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityType
 import net.minecraft.entity.LivingEntity
-import net.minecraft.entity.data.DataTracker
-import net.minecraft.entity.data.TrackedData
-import net.minecraft.entity.data.TrackedDataHandlerRegistry
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.Packet
-import net.minecraft.server.world.ServerWorld
 import net.minecraft.world.World
 import java.util.*
 
@@ -27,6 +21,7 @@ class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, w
             if (value != null) {
                 boundEntityId = value.entityId
                 boundEntityUuid = value.uuid
+                (value as WitheryLivingEntity).claimSoul(this)
             } else {
                 boundEntityId = -0xDEAD
                 boundEntityUuid = null
@@ -43,12 +38,10 @@ class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, w
     }
 
     override fun tick() {
-        if (this.age % 60 == 0)
-            Withery.log(boundEntity?.entityId ?: "No entityId")
+        if (age % 60 == 0)
+            Withery.log(world.registryKey.value)
         super.tick()
     }
-
-    override fun initDataTracker() = Unit
 
     override fun readCustomDataFromTag(tag: CompoundTag) {
         if (!world.isClient && tag.contains("bound_uuid"))
@@ -62,7 +55,11 @@ class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, w
 
     override fun createSpawnPacket(): Packet<*> {
         if (boundEntityUuid != null)
-            boundEntityId = (world as WitheryServerWorld).getEntityByUuid(boundEntityUuid)?.entityId ?: -0xDEAD
+            boundEntity = (world as WitheryServerWorld).getLivingEntityByUuid(boundEntityUuid)
         return SoulSpawnS2CPacket(this)
     }
+
+    override fun initDataTracker() = Unit
+    override fun canUsePortals() = false
+    override fun doesRenderOnFire() = false
 }

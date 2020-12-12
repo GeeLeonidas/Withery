@@ -6,21 +6,21 @@ import net.minecraft.network.Packet
 import net.minecraft.network.PacketByteBuf
 import net.minecraft.network.listener.ClientPlayPacketListener
 
-class SoulSpawnS2CPacket(): Packet<ClientPlayPacketListener> {
-    var entityId: Int = -0xDEAD
+class SoulSpawnS2CPacket(soulEntity: SoulEntity): Packet<ClientPlayPacketListener> {
+    var entityId: Int
         private set
-    var boundId: Int = -0xBEEF
+    var boundId: Int
         private set
-    var x = 0.0
+    var x: Double
         private set
-    var y = 0.0
+    var y: Double
         private set
-    var z = 0.0
+    var z: Double
         private set
 
-    constructor(soulEntity: SoulEntity): this() {
+    init {
         entityId = soulEntity.entityId
-        boundId = soulEntity.boundEntity?.entityId ?: -0xBEEF
+        boundId = soulEntity.boundEntityId
         x = soulEntity.x
         y = soulEntity.y
         z = soulEntity.z

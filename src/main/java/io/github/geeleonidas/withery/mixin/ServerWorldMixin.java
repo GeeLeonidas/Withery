@@ -2,6 +2,7 @@ package io.github.geeleonidas.withery.mixin;
 
 import io.github.geeleonidas.withery.util.WitheryServerWorld;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.profiler.Profiler;
 import net.minecraft.util.registry.RegistryKey;
@@ -14,7 +15,6 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
-import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -30,5 +30,10 @@ public abstract class ServerWorldMixin extends World implements StructureWorldAc
     @Override
     public @Nullable Entity getEntityByUuid(UUID uuid) {
         return entitiesByUuid.get(uuid);
+    }
+
+    @Override
+    public @Nullable LivingEntity getLivingEntityByUuid(UUID uuid) {
+        return (LivingEntity) getEntityByUuid(uuid);
     }
 }
