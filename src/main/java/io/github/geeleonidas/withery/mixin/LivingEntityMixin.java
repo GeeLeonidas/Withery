@@ -3,56 +3,52 @@ package io.github.geeleonidas.withery.mixin;
 import io.github.geeleonidas.withery.entity.SoulEntity;
 import io.github.geeleonidas.withery.util.WitheryLivingEntity;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.HashSet;
-import java.util.function.Consumer;
 
-@SuppressWarnings("unused")
 @Mixin(LivingEntity.class)
-public abstract class LivingEntityMixin extends Entity implements WitheryLivingEntity {
-    public LivingEntityMixin(EntityType<?> type, World world) { super(type, world); }
-
-    private final HashSet<Integer> ownedSoulsIds = new HashSet<>();
-
-    private void forEachOwnedSoul(Consumer<SoulEntity> consumer) {
-        for (Integer entityId : ownedSoulsIds)
-            consumer.accept((SoulEntity) this.world.getEntityById(entityId));
-    }
+public abstract class LivingEntityMixin extends EntityMixin implements WitheryLivingEntity {
+    protected final HashSet<SoulEntity> ownedSouls = new HashSet<>();
 
     @Override
     public void claimSoul(SoulEntity soulEntity) {
         assert soulEntity.getBoundEntityId() == this.getEntityId();
-        ownedSoulsIds.add(soulEntity.getEntityId());
+        ownedSouls.add(soulEntity);
     }
 
     @Override
     public void unclaimSoul(SoulEntity soulEntity) {
-        if (ownedSoulsIds.remove(soulEntity.getEntityId()))
+        if (ownedSouls.remove(soulEntity))
             soulEntity.setBoundEntity(null);
     }
 
     @Inject(at = @At("HEAD"), method = "onDeath")
     public void onDeath(DamageSource source, CallbackInfo ci) {
-        forEachOwnedSoul(soulEntity -> soulEntity.setBoundEntity(null));
-        ownedSoulsIds.clear();
+        ownedSouls.forEach(soulEntity -> soulEntity.setBoundEntity(null));
+        ownedSouls.clear();
     }
 
-    // TODO: Figure out why this isn't working
     @Override
-    public @Nullable Entity moveToWorld(ServerWorld destination) {
-        Entity result = super.moveToWorld(destination);
-        if (result != null)
-            forEachOwnedSoul(soulEntity -> soulEntity.moveToWorld(destination));
-        return result;
+    public void moveToWorld(ServerWorld destination, CallbackInfoReturnable<@Nullable Entity> cir) {
+        Entity destEntity = cir.getReturnValue();
+        if (destEntity != null)
+            this.moveOwnedSoulsToWorld(destination, (LivingEntity) destEntity);
+    }
+
+    protected void moveOwnedSoulsToWorld(ServerWorld destination, LivingEntity destEntity) {
+        int soulsLength = ownedSouls.size();
+        ownedSouls.forEach(Entity::remove);
+        ownedSouls.clear();
+        for (int i = 0; i < soulsLength; i++)
+            destination.spawnEntity(new SoulEntity(destEntity));
     }
 }

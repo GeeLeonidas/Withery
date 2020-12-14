@@ -9,6 +9,7 @@ import net.minecraft.entity.EntityType
 import net.minecraft.entity.LivingEntity
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.Packet
+import net.minecraft.server.world.ServerWorld
 import net.minecraft.world.World
 import java.util.*
 
@@ -38,8 +39,6 @@ class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, w
     }
 
     override fun tick() {
-        if (age % 60 == 0)
-            Withery.log(world.registryKey.value)
         super.tick()
     }
 
@@ -60,6 +59,8 @@ class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, w
     }
 
     override fun initDataTracker() = Unit
+    override fun moveToWorld(destination: ServerWorld): Entity? = null
+
     override fun canUsePortals() = false
     override fun doesRenderOnFire() = false
 }
