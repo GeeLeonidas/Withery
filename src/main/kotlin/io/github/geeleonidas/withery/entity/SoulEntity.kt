@@ -62,5 +62,7 @@ class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, w
     override fun moveToWorld(destination: ServerWorld): Entity? = null
 
     override fun canUsePortals() = false
-    override fun doesRenderOnFire() = false
+    override fun isAttackable() = false
+    override fun canClimb() = false
+    override fun isOnFire() = false
 }

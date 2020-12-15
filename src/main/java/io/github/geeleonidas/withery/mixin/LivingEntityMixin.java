@@ -8,16 +8,29 @@ import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.server.world.ServerWorld;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.HashSet;
+import java.util.function.Consumer;
 
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityMixin extends EntityMixin implements WitheryLivingEntity {
-    protected final HashSet<SoulEntity> ownedSouls = new HashSet<>();
+    @Shadow public abstract boolean isDead();
+
+    private final HashSet<SoulEntity> ownedSouls = new HashSet<>();
+    
+    protected void forEachSoul(Consumer<SoulEntity> consumer) {
+        ownedSouls.forEach(consumer);
+    }
+
+    protected void removeSouls() {
+        this.forEachSoul(Entity::remove);
+        ownedSouls.clear();
+    }
 
     @Override
     public void claimSoul(SoulEntity soulEntity) {
@@ -27,14 +40,24 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
 
     @Override
     public void unclaimSoul(SoulEntity soulEntity) {
-        if (ownedSouls.remove(soulEntity))
-            soulEntity.setBoundEntity(null);
+        assert ownedSouls.remove(soulEntity);
+        soulEntity.setBoundEntity(null);
     }
 
+    @Override
+    public void unclaimAllSouls() {
+        this.forEachSoul(soulEntity -> soulEntity.setBoundEntity(null));
+        ownedSouls.clear();
+    }
+    
     @Inject(at = @At("HEAD"), method = "onDeath")
     public void onDeath(DamageSource source, CallbackInfo ci) {
-        ownedSouls.forEach(soulEntity -> soulEntity.setBoundEntity(null));
-        ownedSouls.clear();
+        this.unclaimAllSouls();
+    }
+
+    @Override
+    public void remove(CallbackInfo ci) {
+        this.removeSouls();
     }
 
     @Override
@@ -46,8 +69,7 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
 
     protected void moveOwnedSoulsToWorld(ServerWorld destination, LivingEntity destEntity) {
         int soulsLength = ownedSouls.size();
-        ownedSouls.forEach(Entity::remove);
-        ownedSouls.clear();
+        this.removeSouls();
         for (int i = 0; i < soulsLength; i++)
             destination.spawnEntity(new SoulEntity(destEntity));
     }
