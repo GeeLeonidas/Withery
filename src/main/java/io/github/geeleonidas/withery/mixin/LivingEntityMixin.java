@@ -32,6 +32,10 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
         ownedSouls.clear();
     }
 
+    protected int getSoulQuantity() {
+        return ownedSouls.size();
+    }
+
     @Override
     public void claimSoul(SoulEntity soulEntity) {
         assert soulEntity.getBoundEntityId() == this.getEntityId();
@@ -68,9 +72,9 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
     }
 
     protected void moveOwnedSoulsToWorld(ServerWorld destination, LivingEntity destEntity) {
-        int soulsLength = ownedSouls.size();
+        int soulQuantity = this.getSoulQuantity();
         this.removeSouls();
-        for (int i = 0; i < soulsLength; i++)
+        for (int i = 0; i < soulQuantity; i++)
             destination.spawnEntity(new SoulEntity(destEntity));
     }
 }

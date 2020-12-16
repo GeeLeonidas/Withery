@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(StatusEffect.class)
-public class StatusEffectMixin {
+public abstract class StatusEffectMixin {
     @Inject(at = @At("HEAD"), method = "applyUpdateEffect", cancellable = true)
     public void applyUpdateEffect(LivingEntity entity, int amplifier, CallbackInfo ci) {
         boolean isSoulHarvestValid =

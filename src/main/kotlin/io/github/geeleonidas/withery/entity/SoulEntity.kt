@@ -7,6 +7,7 @@ import io.github.geeleonidas.withery.util.WitheryServerWorld
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityType
 import net.minecraft.entity.LivingEntity
+import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.Packet
 import net.minecraft.server.world.ServerWorld
@@ -21,7 +22,11 @@ class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, w
         set(value) {
             if (value != null) {
                 boundEntityId = value.entityId
-                boundEntityUuid = value.uuid
+                boundEntityUuid =
+                    if (value !is PlayerEntity)
+                        value.uuid
+                    else // PlayerEntity doesn't need to be tag tracked
+                        null
                 (value as WitheryLivingEntity).claimSoul(this)
             } else {
                 boundEntityId = -0xDEAD
