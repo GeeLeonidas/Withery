@@ -1,11 +1,13 @@
 package io.github.geeleonidas.withery.mixin;
 
+import io.github.geeleonidas.withery.Withery;
 import io.github.geeleonidas.withery.entity.SoulEntity;
 import io.github.geeleonidas.withery.util.WitheryLivingEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.server.world.ServerWorld;
+import org.apache.logging.log4j.Level;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -15,6 +17,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.HashSet;
+import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 
 @Mixin(LivingEntity.class)
@@ -27,8 +30,13 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
         ownedSouls.forEach(consumer);
     }
 
-    protected void removeSouls() {
+    protected void removeAllSouls() {
         this.forEachSoul(Entity::remove);
+        ownedSouls.clear();
+    }
+
+    protected void unclaimAllSouls() {
+        this.forEachSoul(soulEntity -> soulEntity.setBoundEntity(null));
         ownedSouls.clear();
     }
 
@@ -44,24 +52,15 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
 
     @Override
     public void unclaimSoul(SoulEntity soulEntity) {
-        assert ownedSouls.remove(soulEntity);
+        if(!ownedSouls.remove(soulEntity))
+            throw new NoSuchElementException();
         soulEntity.setBoundEntity(null);
+        Withery.INSTANCE.log(ownedSouls.size(), Level.INFO);
     }
 
-    @Override
-    public void unclaimAllSouls() {
-        this.forEachSoul(soulEntity -> soulEntity.setBoundEntity(null));
-        ownedSouls.clear();
-    }
-    
     @Inject(at = @At("HEAD"), method = "onDeath")
     public void onDeath(DamageSource source, CallbackInfo ci) {
         this.unclaimAllSouls();
-    }
-
-    @Override
-    public void remove(CallbackInfo ci) {
-        this.removeSouls();
     }
 
     @Override
@@ -73,7 +72,7 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
 
     protected void moveOwnedSoulsToWorld(ServerWorld destination, LivingEntity destEntity) {
         int soulQuantity = this.getSoulQuantity();
-        this.removeSouls();
+        this.removeAllSouls();
         for (int i = 0; i < soulQuantity; i++)
             destination.spawnEntity(new SoulEntity(destEntity));
     }

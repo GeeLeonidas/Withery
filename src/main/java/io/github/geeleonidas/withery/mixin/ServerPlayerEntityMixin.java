@@ -35,6 +35,12 @@ public abstract class ServerPlayerEntityMixin extends LivingEntityMixin {
         hasDiedRecently = true;
     }
 
+    @Inject(at = @At("HEAD"), method = "onDisconnect")
+    public void onPlayerDisconnect(CallbackInfo ci) {
+        tagSoulQuantity = this.getSoulQuantity();
+        this.removeAllSouls();
+    }
+
     @Inject(at = @At("TAIL"), method = "onSpawn")
     public void onPlayerSpawn(CallbackInfo ci) {
         if (this.isDead()) // Occurs when a dead player joins
@@ -53,6 +59,6 @@ public abstract class ServerPlayerEntityMixin extends LivingEntityMixin {
 
     @Inject(at = @At("TAIL"), method = "writeCustomDataToTag")
     public void writeCustomDataToTag(CompoundTag tag, CallbackInfo ci) {
-        tag.putInt("soul_quantity", this.getSoulQuantity());
+        tag.putInt("soul_quantity", tagSoulQuantity);
     }
 }

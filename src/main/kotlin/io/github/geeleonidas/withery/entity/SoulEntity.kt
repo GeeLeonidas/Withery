@@ -66,6 +66,11 @@ class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, w
     override fun initDataTracker() = Unit
     override fun moveToWorld(destination: ServerWorld): Entity? = null
 
+    override fun kill() {
+        (this.boundEntity as WitheryLivingEntity?)?.unclaimSoul(this)
+        super.kill()
+    }
+
     override fun canUsePortals() = false
     override fun isAttackable() = false
     override fun canClimb() = false
