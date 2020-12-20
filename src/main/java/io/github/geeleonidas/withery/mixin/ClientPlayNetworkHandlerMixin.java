@@ -27,20 +27,18 @@ public abstract class ClientPlayNetworkHandlerMixin implements WitheryClientPlay
     public void onSoulSpawn(SoulSpawnS2CPacket packet) {
         NetworkThreadUtils.forceMainThread(packet, this, this.client);
 
-        SoulEntity soulEntity;
-        Entity bound = this.world.getEntityById(packet.getBoundId());
-        if (bound instanceof LivingEntity) {
-            soulEntity = new SoulEntity((LivingEntity) bound);
-            soulEntity.updateTrackedPosition(bound.getPos());
-        } else {
-            Withery.INSTANCE.log("Bound entity not found.", Level.INFO);
-            double x = packet.getX();
-            double y = packet.getY();
-            double z = packet.getZ();
-            soulEntity = new SoulEntity(this.world, x, y, z);
-            soulEntity.updateTrackedPosition(x, y, z);
-        }
+        double x = packet.getX();
+        double y = packet.getY();
+        double z = packet.getZ();
 
+        SoulEntity soulEntity = new SoulEntity(this.world, x, y, z);
+        Entity bound = this.world.getEntityById(packet.getBoundId());
+        if (bound instanceof LivingEntity)
+            soulEntity.setBoundEntity((LivingEntity) bound);
+        else
+            Withery.INSTANCE.log("Bound entity not found.", Level.INFO);
+
+        soulEntity.updateTrackedPosition(x, y, z);
         soulEntity.setEntityId(packet.getEntityId());
         this.world.addEntity(packet.getEntityId(), soulEntity);
     }

@@ -3,67 +3,45 @@ package io.github.geeleonidas.withery.entity
 import io.github.geeleonidas.withery.Withery
 import io.github.geeleonidas.withery.network.SoulSpawnS2CPacket
 import io.github.geeleonidas.withery.util.WitheryLivingEntity
-import io.github.geeleonidas.withery.util.WitheryServerWorld
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityType
 import net.minecraft.entity.LivingEntity
-import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.Packet
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.world.World
-import java.util.*
 
 class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, world) {
-    var boundEntityUuid: UUID? = null
-    var boundEntityId = -0xDEAD
-    var boundEntity: LivingEntity?
-        get() = world.getEntityById(boundEntityId) as LivingEntity?
-        set(value) {
-            if (value != null) {
-                boundEntityId = value.entityId
-                boundEntityUuid =
-                    if (value !is PlayerEntity)
-                        value.uuid
-                    else // PlayerEntity doesn't need to be tag tracked
-                        null
-                (value as WitheryLivingEntity).claimSoul(this)
-            } else {
-                boundEntityId = -0xDEAD
-                boundEntityUuid = null
-            }
-        }
+    var boundEntity: LivingEntity? = null
+
+    init { this.noClip = true }
 
     constructor(world: World, x: Double, y: Double, z: Double): this(Withery.soulEntityType, world) {
         this.updatePosition(x, y, z)
     }
 
     constructor(boundEntity: LivingEntity): this(Withery.soulEntityType, boundEntity.world) {
-        this.updatePosition(boundEntity.x, boundEntity.y, boundEntity.z)
-        this.boundEntity = boundEntity
+        val pos = boundEntity.boundingBox.center
+        this.updatePosition(pos.x, pos.y, pos.z)
+        (boundEntity as WitheryLivingEntity).claimSoul(this)
     }
 
     override fun tick() {
+        if (this.age % 100 == 0)
+            Withery.log(world.registryKey.value)
         super.tick()
     }
 
-    override fun readCustomDataFromTag(tag: CompoundTag) {
-        if (!world.isClient && tag.contains("bound_uuid"))
-            boundEntityUuid = tag.getUuid("bound_uuid")
-    }
-
-    override fun writeCustomDataToTag(tag: CompoundTag) {
-        if (!world.isClient && boundEntityUuid != null)
-            tag.putUuid("bound_uuid", boundEntityUuid!!)
-    }
-
-    override fun createSpawnPacket(): Packet<*> {
-        if (boundEntityUuid != null)
-            boundEntity = (world as WitheryServerWorld).getLivingEntityByUuid(boundEntityUuid)
-        return SoulSpawnS2CPacket(this)
-    }
-
+    override fun createSpawnPacket(): Packet<*> = SoulSpawnS2CPacket(this)
+    override fun readCustomDataFromTag(tag: CompoundTag) = Unit
+    override fun writeCustomDataToTag(tag: CompoundTag) = Unit
     override fun initDataTracker() = Unit
+
+    override fun saveToTag(tag: CompoundTag?) =
+        if (boundEntity == null)
+            super.saveToTag(tag)
+        else
+            false
     override fun moveToWorld(destination: ServerWorld): Entity? = null
 
     override fun kill() {
@@ -73,6 +51,7 @@ class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, w
 
     override fun canUsePortals() = false
     override fun isAttackable() = false
+    override fun hasNoGravity() = true
     override fun canClimb() = false
     override fun isOnFire() = false
 }

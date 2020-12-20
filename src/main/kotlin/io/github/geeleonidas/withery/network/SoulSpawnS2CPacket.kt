@@ -20,7 +20,7 @@ class SoulSpawnS2CPacket(soulEntity: SoulEntity): Packet<ClientPlayPacketListene
 
     init {
         entityId = soulEntity.entityId
-        boundId = soulEntity.boundEntityId
+        boundId = soulEntity.boundEntity?.entityId ?: -0xDEAD
         x = soulEntity.x
         y = soulEntity.y
         z = soulEntity.z

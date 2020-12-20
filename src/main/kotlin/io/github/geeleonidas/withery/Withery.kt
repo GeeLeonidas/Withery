@@ -1,8 +1,9 @@
 package io.github.geeleonidas.withery
 
 import io.github.geeleonidas.withery.entity.SoulEntity
-import net.fabricmc.api.ModInitializer
+import io.github.geeleonidas.withery.event.WitheryEntityLoadEvent
 import net.fabricmc.fabric.api.`object`.builder.v1.entity.FabricEntityTypeBuilder
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents
 import net.minecraft.entity.EntityDimensions
 import net.minecraft.entity.EntityType
 import net.minecraft.entity.SpawnGroup
@@ -11,7 +12,6 @@ import net.minecraft.util.Identifier
 import net.minecraft.util.registry.Registry
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
-import kotlin.reflect.jvm.javaConstructor
 
 object Withery {
     const val modId = "withery"
@@ -34,5 +34,6 @@ object Withery {
 }
 
 fun init() {
+    ServerEntityEvents.ENTITY_LOAD.register(WitheryEntityLoadEvent)
     Withery.log("Minecraft withered away!")
 }

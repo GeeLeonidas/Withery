@@ -15,11 +15,14 @@ public abstract class StatusEffectMixin {
     @Inject(at = @At("HEAD"), method = "applyUpdateEffect", cancellable = true)
     public void applyUpdateEffect(LivingEntity entity, int amplifier, CallbackInfo ci) {
         boolean isSoulHarvestValid =
-            entity.isAlive() && entity.hurtTime == 0 && !entity.isInvulnerable() &&
+            entity.isAlive() && entity.hurtTime <= 0 && !entity.isInvulnerable() &&
             entity.world.getRegistryKey() != World.NETHER &&
             this.equals(StatusEffects.WITHER);
         if (isSoulHarvestValid) {
-            entity.world.spawnEntity(new SoulEntity(entity));
+            if (entity.getHealth() > 1F)
+                entity.world.spawnEntity(new SoulEntity(entity));
+            else
+                ci.cancel();
         }
     }
 }
