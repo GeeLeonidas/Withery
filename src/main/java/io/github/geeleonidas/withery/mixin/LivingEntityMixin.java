@@ -11,6 +11,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.HashSet;
 import java.util.NoSuchElementException;
@@ -46,7 +47,7 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
         tagSoulQuantity = 0;
 
         for (int i = 0; i < soulQuantity; i++)
-            world.spawnEntity(new SoulEntity(this.getInstance()));
+            world.loadEntity(new SoulEntity(this.getInstance()));
     }
 
     @Override
@@ -66,11 +67,6 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
     }
 
     @Override
-    public void remove(CallbackInfo ci) {
-        this.removeAllSouls();
-    }
-
-    @Override
     public void onLoad(ServerWorld world) {
         this.loadSouls(world);
     }
@@ -78,6 +74,17 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
     @Inject(at = @At("HEAD"), method = "onDeath")
     public void onDeath(DamageSource source, CallbackInfo ci) {
         this.unclaimAllSouls();
+    }
+
+    @Override
+    public void remove(CallbackInfo ci) {
+        this.removeAllSouls();
+    }
+
+    @Override
+    public void moveToWorld(ServerWorld destination, CallbackInfoReturnable<Entity> cir) {
+        if (cir.getReturnValue() != null)
+            this.removeAllSouls();
     }
 
     @Inject(at = @At("TAIL"), method = "readCustomDataFromTag")

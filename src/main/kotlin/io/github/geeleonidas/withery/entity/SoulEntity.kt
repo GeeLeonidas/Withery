@@ -27,8 +27,6 @@ class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, w
     }
 
     override fun tick() {
-        if (this.age % 100 == 0)
-            Withery.log(world.registryKey.value)
         super.tick()
     }
 
