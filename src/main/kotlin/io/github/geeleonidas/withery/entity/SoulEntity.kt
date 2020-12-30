@@ -3,6 +3,9 @@ package io.github.geeleonidas.withery.entity
 import io.github.geeleonidas.withery.Withery
 import io.github.geeleonidas.withery.network.SoulSpawnS2CPacket
 import io.github.geeleonidas.withery.util.WitheryLivingEntity
+import net.fabricmc.api.EnvType
+import net.fabricmc.api.Environment
+import net.minecraft.client.render.entity.ExperienceOrbEntityRenderer
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityType
 import net.minecraft.entity.LivingEntity
@@ -13,7 +16,7 @@ import net.minecraft.util.math.MathHelper
 import net.minecraft.util.math.Vec3d
 import net.minecraft.world.World
 
-class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, world) {
+open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, world) {
     var boundEntity: LivingEntity? = null
 
     init { this.noClip = true }
@@ -34,23 +37,19 @@ class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, w
         if (boundEntity.isDead || boundEntity.removed)
             return
 
+        val thisPos = this.boundingBox.center
         val targetPos = boundEntity.boundingBox.center
-        val distToTarget = targetPos.distanceTo(this.pos)
+        val distToTarget = targetPos.distanceTo(thisPos)
 
-        if (distToTarget > 0.125) {
-            if (distToTarget < 10) {
+        if (distToTarget > 0.125)
+            if (distToTarget < 10)
                 this.updatePosition(
-                    MathHelper.lerp(0.1, this.pos.x, targetPos.x),
-                    MathHelper.lerp(0.1, this.pos.y, targetPos.y),
-                    MathHelper.lerp(0.1, this.pos.z, targetPos.z)
+                    MathHelper.lerp(0.2, thisPos.x, targetPos.x),
+                    MathHelper.lerp(0.2, thisPos.y, targetPos.y),
+                    MathHelper.lerp(0.2, thisPos.z, targetPos.z)
                 )
-            } else
-                this.updatePosition(targetPos.x, targetPos.y, targetPos.z)
-        } else
-            if (this.velocity.length() > 0.05)
-                this.velocity = this.velocity.multiply(0.25)
-            else // Less than Epsilon
-                this.velocity = Vec3d.ZERO
+            else
+                this.updatePosition(targetPos.x ,targetPos.y, targetPos.z)
     }
 
     override fun tick() {
