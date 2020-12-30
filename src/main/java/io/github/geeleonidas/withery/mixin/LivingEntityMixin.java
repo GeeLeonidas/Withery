@@ -52,8 +52,7 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
 
     @Override
     public void claimSoul(SoulEntity soulEntity) {
-        assert soulEntity.getBoundEntity() == null;
-        soulEntity.setBoundEntity(this.getInstance());
+        assert soulEntity.getBoundEntity() == this.getInstance();
         ownedSouls.add(soulEntity);
         tagSoulQuantity++;
     }

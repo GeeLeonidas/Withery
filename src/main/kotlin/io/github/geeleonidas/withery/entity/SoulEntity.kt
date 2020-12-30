@@ -17,7 +17,21 @@ import net.minecraft.util.math.Vec3d
 import net.minecraft.world.World
 
 open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, world) {
+    protected var offsetY = 0.0
+    protected var radius = 0.0
     var boundEntity: LivingEntity? = null
+        set(value) {
+            if (value != null) {
+                (value as WitheryLivingEntity).claimSoul(this)
+                offsetY = this.random.nextDouble() // TODO: Create factors and ranges for these
+                radius = this.random.nextDouble()
+            }
+            else if (field != null)
+                (field as WitheryLivingEntity).unclaimSoul(this)
+            field = value
+        }
+    protected val targetPos: Vec3d
+        get() = boundEntity!!.boundingBox.center
 
     init { this.noClip = true }
 
@@ -28,7 +42,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
     constructor(boundEntity: LivingEntity): this(Withery.soulEntityType, boundEntity.world) {
         val pos = boundEntity.boundingBox.center
         this.updatePosition(pos.x, pos.y, pos.z)
-        (boundEntity as WitheryLivingEntity).claimSoul(this)
+        this.boundEntity = boundEntity
     }
 
     protected fun tickBoundEntity(boundEntity: LivingEntity?) {
@@ -38,18 +52,17 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
             return
 
         val thisPos = this.boundingBox.center
-        val targetPos = boundEntity.boundingBox.center
         val distToTarget = targetPos.distanceTo(thisPos)
 
         if (distToTarget > 0.125)
             if (distToTarget < 10)
                 this.updatePosition(
-                    MathHelper.lerp(0.2, thisPos.x, targetPos.x),
-                    MathHelper.lerp(0.2, thisPos.y, targetPos.y),
-                    MathHelper.lerp(0.2, thisPos.z, targetPos.z)
+                    MathHelper.lerp(0.2, thisPos.x, this.targetPos.x),
+                    MathHelper.lerp(0.2, thisPos.y, this.targetPos.y),
+                    MathHelper.lerp(0.2, thisPos.z, this.targetPos.z)
                 )
             else
-                this.updatePosition(targetPos.x ,targetPos.y, targetPos.z)
+                this.updatePosition(this.targetPos.x ,this.targetPos.y, this.targetPos.z)
     }
 
     override fun tick() {
@@ -70,7 +83,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
     override fun moveToWorld(destination: ServerWorld): Entity? = null
 
     override fun kill() {
-        (this.boundEntity as WitheryLivingEntity?)?.unclaimSoul(this)
+        this.boundEntity = null
         super.kill()
     }
 
