@@ -3,9 +3,6 @@ package io.github.geeleonidas.withery.entity
 import io.github.geeleonidas.withery.Withery
 import io.github.geeleonidas.withery.network.SoulSpawnS2CPacket
 import io.github.geeleonidas.withery.util.WitheryLivingEntity
-import net.fabricmc.api.EnvType
-import net.fabricmc.api.Environment
-import net.minecraft.client.render.entity.ExperienceOrbEntityRenderer
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityType
 import net.minecraft.entity.LivingEntity
@@ -13,25 +10,21 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.Packet
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.util.math.MathHelper
-import net.minecraft.util.math.Vec3d
 import net.minecraft.world.World
 
 open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, world) {
+    protected var offsetAngle = 0.0
     protected var offsetY = 0.0
     protected var radius = 0.0
     var boundEntity: LivingEntity? = null
-        set(value) {
+        protected set(value) {
             if (value != null) {
-                (value as WitheryLivingEntity).claimSoul(this)
+                (value as WitheryLivingEntity).boundSoul(this)
                 offsetY = this.random.nextDouble() // TODO: Create factors and ranges for these
                 radius = this.random.nextDouble()
             }
-            else if (field != null)
-                (field as WitheryLivingEntity).unclaimSoul(this)
             field = value
         }
-    protected val targetPos: Vec3d
-        get() = boundEntity!!.boundingBox.center
 
     init { this.noClip = true }
 
@@ -45,6 +38,8 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         this.boundEntity = boundEntity
     }
 
+    fun unbound() { this.boundEntity = null }
+
     protected fun tickBoundEntity(boundEntity: LivingEntity?) {
         if (boundEntity == null)
             return
@@ -52,17 +47,18 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
             return
 
         val thisPos = this.boundingBox.center
+        val targetPos = boundEntity.boundingBox.center
         val distToTarget = targetPos.distanceTo(thisPos)
 
         if (distToTarget > 0.125)
             if (distToTarget < 10)
                 this.updatePosition(
-                    MathHelper.lerp(0.2, thisPos.x, this.targetPos.x),
-                    MathHelper.lerp(0.2, thisPos.y, this.targetPos.y),
-                    MathHelper.lerp(0.2, thisPos.z, this.targetPos.z)
+                    MathHelper.lerp(0.2, thisPos.x, targetPos.x),
+                    MathHelper.lerp(0.2, thisPos.y, targetPos.y),
+                    MathHelper.lerp(0.2, thisPos.z, targetPos.z)
                 )
             else
-                this.updatePosition(this.targetPos.x ,this.targetPos.y, this.targetPos.z)
+                this.updatePosition(targetPos.x, targetPos.y, targetPos.z)
     }
 
     override fun tick() {
@@ -83,7 +79,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
     override fun moveToWorld(destination: ServerWorld): Entity? = null
 
     override fun kill() {
-        this.boundEntity = null
+        (this.boundEntity as WitheryLivingEntity?)?.unboundSoul(this)
         super.kill()
     }
 

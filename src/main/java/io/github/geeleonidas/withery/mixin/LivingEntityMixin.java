@@ -19,7 +19,7 @@ import java.util.function.Consumer;
 
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityMixin extends EntityMixin implements WitheryLivingEntity {
-    private final HashSet<SoulEntity> ownedSouls = new HashSet<>();
+    private final HashSet<SoulEntity> boundSouls = new HashSet<>();
     private int tagSoulQuantity = 0;
 
     @SuppressWarnings("all") // Evil wizardry 😈
@@ -28,17 +28,17 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
     }
     
     protected void forEachSoul(Consumer<SoulEntity> consumer) {
-        ownedSouls.forEach(consumer);
+        boundSouls.forEach(consumer);
     }
 
     protected void removeAllSouls() {
         this.forEachSoul(Entity::remove);
-        ownedSouls.clear();
+        boundSouls.clear();
     }
 
-    protected void unclaimAllSouls() {
-        this.forEachSoul(soulEntity -> soulEntity.setBoundEntity(null));
-        ownedSouls.clear();
+    protected void unboundAllSouls() {
+        this.forEachSoul(SoulEntity::unbound);
+        boundSouls.clear();
         tagSoulQuantity = 0;
     }
 
@@ -51,17 +51,17 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
     }
 
     @Override
-    public void claimSoul(SoulEntity soulEntity) {
+    public void boundSoul(SoulEntity soulEntity) {
         assert soulEntity.getBoundEntity() == this.getInstance();
-        ownedSouls.add(soulEntity);
+        boundSouls.add(soulEntity);
         tagSoulQuantity++;
     }
 
     @Override
-    public void unclaimSoul(SoulEntity soulEntity) {
-        if(!ownedSouls.remove(soulEntity))
+    public void unboundSoul(SoulEntity soulEntity) {
+        if(!boundSouls.remove(soulEntity))
             throw new NoSuchElementException();
-        soulEntity.setBoundEntity(null);
+        soulEntity.unbound();
         tagSoulQuantity--;
     }
 
@@ -72,7 +72,7 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
 
     @Inject(at = @At("HEAD"), method = "onDeath")
     public void onDeath(DamageSource source, CallbackInfo ci) {
-        this.unclaimAllSouls();
+        this.unboundAllSouls();
     }
 
     @Override

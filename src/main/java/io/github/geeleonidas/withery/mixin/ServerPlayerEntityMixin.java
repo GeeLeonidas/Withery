@@ -26,6 +26,6 @@ public abstract class ServerPlayerEntityMixin extends LivingEntityMixin implemen
 
     @Inject(at = @At("HEAD"), method = "onDeath")
     public void onPlayerDeath(DamageSource source, CallbackInfo ci) {
-        this.unclaimAllSouls();
+        this.unboundAllSouls();
     }
 }
