@@ -6,23 +6,18 @@ import io.github.geeleonidas.withery.util.WitheryLivingEntity
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityType
 import net.minecraft.entity.LivingEntity
+import net.minecraft.entity.MovementType
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.Packet
 import net.minecraft.server.world.ServerWorld
-import net.minecraft.util.math.MathHelper
+import net.minecraft.util.math.Vec3d
 import net.minecraft.world.World
 
 open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, world) {
-    protected var offsetAngle = 0.0
-    protected var offsetY = 0.0
-    protected var radius = 0.0
     var boundEntity: LivingEntity? = null
         protected set(value) {
-            if (value != null) {
+            if (value != null)
                 (value as WitheryLivingEntity).boundSoul(this)
-                offsetY = this.random.nextDouble() // TODO: Create factors and ranges for these
-                radius = this.random.nextDouble()
-            }
             field = value
         }
 
@@ -40,7 +35,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
 
     fun unbound() { this.boundEntity = null }
 
-    protected fun tickBoundEntity(boundEntity: LivingEntity?) {
+    private fun tickBoundEntity(boundEntity: LivingEntity?) {
         if (boundEntity == null)
             return
         if (boundEntity.isDead || boundEntity.removed)
@@ -48,22 +43,30 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
 
         val thisPos = this.boundingBox.center
         val targetPos = boundEntity.boundingBox.center
-        val distToTarget = targetPos.distanceTo(thisPos)
+        val toTarget = targetPos.subtract(thisPos)
+        val lengthSquared = toTarget.lengthSquared()
 
-        if (distToTarget > 0.125)
-            if (distToTarget < 10)
-                this.updatePosition(
-                    MathHelper.lerp(0.2, thisPos.x, targetPos.x),
-                    MathHelper.lerp(0.2, thisPos.y, targetPos.y),
-                    MathHelper.lerp(0.2, thisPos.z, targetPos.z)
-                )
-            else
+        if (lengthSquared > 0.125 * 0.125) {
+            if (lengthSquared > 100) {
                 this.updatePosition(targetPos.x, targetPos.y, targetPos.z)
+                this.velocity = Vec3d.ZERO
+                return
+            }
+
+            // TODO: Velocity function with lerp-like behaviour
+        }
     }
 
     override fun tick() {
-        this.tickBoundEntity(this.boundEntity)
         super.tick()
+
+        this.prevX = this.x
+        this.prevY = this.y
+        this.prevZ = this.z
+
+        this.tickBoundEntity(this.boundEntity)
+
+        this.move(MovementType.SELF, this.velocity)
     }
 
     override fun createSpawnPacket(): Packet<*> = SoulSpawnS2CPacket(this)

@@ -1,6 +1,5 @@
 package io.github.geeleonidas.withery.mixin;
 
-import io.github.geeleonidas.withery.Withery;
 import io.github.geeleonidas.withery.entity.SoulEntity;
 import io.github.geeleonidas.withery.network.SoulSpawnS2CPacket;
 import io.github.geeleonidas.withery.util.WitheryClientPlayPacketListener;
@@ -12,7 +11,6 @@ import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.network.NetworkThreadUtils;
-import org.apache.logging.log4j.Level;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
@@ -31,12 +29,12 @@ public abstract class ClientPlayNetworkHandlerMixin implements WitheryClientPlay
         double y = packet.getY();
         double z = packet.getZ();
 
-        SoulEntity soulEntity = new SoulEntity(this.world, x, y, z);
+        SoulEntity soulEntity;
         Entity bound = this.world.getEntityById(packet.getBoundId());
         if (bound instanceof LivingEntity)
-            soulEntity.setBoundEntity((LivingEntity) bound);
+            soulEntity = new SoulEntity((LivingEntity) bound);
         else
-            Withery.INSTANCE.log("Bound entity not found.", Level.INFO);
+            soulEntity = new SoulEntity(this.world, x, y, z);
 
         soulEntity.updateTrackedPosition(x, y, z);
         soulEntity.setEntityId(packet.getEntityId());
