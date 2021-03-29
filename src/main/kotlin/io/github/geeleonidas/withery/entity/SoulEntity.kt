@@ -12,6 +12,7 @@ import net.minecraft.network.Packet
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.util.math.Vec3d
 import net.minecraft.world.World
+import kotlin.math.sqrt
 
 open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, world) {
     var boundEntity: LivingEntity? = null
@@ -44,16 +45,29 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         val thisPos = this.boundingBox.center
         val targetPos = boundEntity.boundingBox.center
         val toTarget = targetPos.subtract(thisPos)
-        val lengthSquared = toTarget.lengthSquared()
+        val targetLenSq = toTarget.lengthSquared()
 
-        if (lengthSquared > 0.125 * 0.125) {
-            if (lengthSquared > 100) {
+        if (targetLenSq > 0.125 * 0.125) {
+            if (targetLenSq > 100) {
                 this.updatePosition(targetPos.x, targetPos.y, targetPos.z)
                 this.velocity = Vec3d.ZERO
                 return
             }
 
-            // TODO: Velocity function with lerp-like behaviour
+            val dot = toTarget.dotProduct(this.velocity)
+            val velLenSq = this.velocity.lengthSquared()
+
+            if (targetLenSq < 0.5)
+                this.velocity =
+                    this.velocity.multiply(0.8)
+            else if (dot * dot / velLenSq < 0.5 * targetLenSq)
+                this.velocity =
+                    this.velocity.multiply(0.95).add(
+                        toTarget.normalize().multiply(targetLenSq * 0.0025)
+                    )
+
+            this.velocity =
+                this.velocity.add(toTarget.normalize().multiply(targetLenSq * 0.002))
         }
     }
 
