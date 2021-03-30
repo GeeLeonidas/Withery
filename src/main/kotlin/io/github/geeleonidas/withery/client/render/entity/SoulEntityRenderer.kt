@@ -51,7 +51,8 @@ class SoulEntityRenderer(entityRenderDispatcher: EntityRenderDispatcher):
 
         // Who doesn't like details?
         val time = entity.age + tickDelta
-        matrices.translate(0.0, sin(time * PI / 20) / 8, 0.0)
+        val velLenSq = entity.velocity.lengthSquared()
+        matrices.translate(0.0, sin(time * PI / 20) / (4 + 4 * velLenSq), 0.0)
 
         // Don't ask me, I don't know either
         val vertexConsumer = vertexConsumers.getBuffer(textureLayers[getCurrentFrame(entity.age)])

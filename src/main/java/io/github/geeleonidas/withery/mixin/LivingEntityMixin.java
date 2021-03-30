@@ -8,6 +8,7 @@ import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.world.ServerWorld;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -19,6 +20,8 @@ import java.util.function.Consumer;
 
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityMixin extends EntityMixin implements WitheryLivingEntity {
+    @Shadow public abstract float getHealth();
+
     private final HashSet<SoulEntity> boundSouls = new HashSet<>();
     private int tagSoulQuantity = 0;
 
@@ -50,6 +53,8 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
             world.loadEntity(new SoulEntity(this.getInstance()));
     }
 
+    // Interface Overrides
+
     @Override
     public void boundSoul(SoulEntity soulEntity) {
         assert soulEntity.getBoundEntity() == this.getInstance();
@@ -70,30 +75,44 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
         this.loadSouls(world);
     }
 
-    @Inject(at = @At("HEAD"), method = "onDeath")
-    public void onDeath(DamageSource source, CallbackInfo ci) {
-        this.unboundAllSouls();
+    @Override
+    public float getPotentialHealth() {
+        return this.getHealth() + boundSouls.size();
     }
 
+    // Inject Overrides
+
     @Override
-    public void remove(CallbackInfo ci) {
+    protected void remove(CallbackInfo ci) {
         this.removeAllSouls();
     }
 
     @Override
-    public void moveToWorld(ServerWorld destination, CallbackInfoReturnable<Entity> cir) {
+    protected void moveToWorld(ServerWorld destination, CallbackInfoReturnable<Entity> cir) {
         if (cir.getReturnValue() != null)
             this.removeAllSouls();
     }
 
+    // Injects
+
+    @Inject(at= @At("TAIL"), method = "tick")
+    private void tick(CallbackInfo ci) {
+
+    }
+
+    @Inject(at = @At("HEAD"), method = "onDeath")
+    private void onDeath(DamageSource source, CallbackInfo ci) {
+        this.unboundAllSouls();
+    }
+
     @Inject(at = @At("TAIL"), method = "readCustomDataFromTag")
-    public void readCustomDataFromTag(CompoundTag tag, CallbackInfo ci) {
+    private void readCustomDataFromTag(CompoundTag tag, CallbackInfo ci) {
         if (tag.contains("soul_quantity"))
             tagSoulQuantity = tag.getInt("soul_quantity");
     }
 
     @Inject(at = @At("TAIL"), method = "writeCustomDataToTag")
-    public void writeCustomDataToTag(CompoundTag tag, CallbackInfo ci) {
+    private void writeCustomDataToTag(CompoundTag tag, CallbackInfo ci) {
         if (tagSoulQuantity > 0)
             tag.putInt("soul_quantity", tagSoulQuantity);
     }

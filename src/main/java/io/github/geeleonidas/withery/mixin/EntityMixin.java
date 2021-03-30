@@ -16,8 +16,8 @@ public abstract class EntityMixin {
     @Shadow public World world;
 
     @Inject(at = @At("HEAD"), method = "remove")
-    public void remove(CallbackInfo ci) { }
+    protected void remove(CallbackInfo ci) { }
 
     @Inject(at = @At("RETURN"), method = "moveToWorld")
-    public void moveToWorld(ServerWorld destination, CallbackInfoReturnable<Entity> cir) { }
+    protected void moveToWorld(ServerWorld destination, CallbackInfoReturnable<Entity> cir) { }
 }

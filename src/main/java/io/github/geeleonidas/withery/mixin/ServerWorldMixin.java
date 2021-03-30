@@ -43,7 +43,7 @@ public abstract class ServerWorldMixin extends World implements StructureWorldAc
     }
 
     @Inject(at = @At("TAIL"), method = "onPlayerConnected")
-    public void onPlayerConnected(ServerPlayerEntity player, CallbackInfo ci) {
+    private void onPlayerConnected(ServerPlayerEntity player, CallbackInfo ci) {
         ((WitheryServerPlayerEntity) player).onConnect(this.toServerWorld());
     }
 }

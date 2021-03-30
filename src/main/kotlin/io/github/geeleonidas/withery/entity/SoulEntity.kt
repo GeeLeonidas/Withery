@@ -13,6 +13,7 @@ import net.minecraft.network.Packet
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.util.math.Vec3d
 import net.minecraft.world.World
+import java.util.function.Predicate
 
 open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, world) {
     var boundEntity: LivingEntity? = null
@@ -76,28 +77,29 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
     private fun tickBoundEntity() {
         val boundEntity = this.boundEntity
 
-        if (boundEntity == null) {
-            val aoe = this.boundingBox.expand(2.0)
-            val withering = this.world.getEntitiesByClass(LivingEntity::class.java, aoe)
-                { entity -> entity.hasStatusEffect(StatusEffects.WITHER) }
-            if (withering.isEmpty())
-                return
+        if (boundEntity != null)
+            return
 
-            var nextBoundEntity = withering.removeAt(0)
-            var lowestDist = nextBoundEntity.pos.squaredDistanceTo(this.pos)
-            for (entity in withering) {
-                val currentDist = entity.pos.squaredDistanceTo(this.pos)
-                if (currentDist < lowestDist) {
-                    nextBoundEntity = entity
-                    lowestDist = currentDist
-                }
-            }
-
-            this.boundEntity = nextBoundEntity
-        } else {
-            if (boundEntity.isDead || boundEntity.removed)
-                return
+        val aoe = this.boundingBox.expand(2.0)
+        val withering = this.world.getEntitiesByClass(LivingEntity::class.java, aoe) { entity ->
+            entity.hasStatusEffect(StatusEffects.WITHER) &&
+                (entity as WitheryLivingEntity).potentialHealth < entity.maxHealth
         }
+
+        if (withering.isEmpty())
+            return
+
+        var nextBoundEntity = withering.removeAt(0)
+        var lowestDist = nextBoundEntity.pos.squaredDistanceTo(this.pos)
+        for (entity in withering) {
+            val currentDist = entity.pos.squaredDistanceTo(this.pos)
+            if (currentDist < lowestDist) {
+                nextBoundEntity = entity
+                lowestDist = currentDist
+            }
+        }
+
+        this.boundEntity = nextBoundEntity
     }
 
     override fun tick() {

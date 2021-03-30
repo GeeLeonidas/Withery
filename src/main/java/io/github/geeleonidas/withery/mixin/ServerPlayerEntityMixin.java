@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(ServerPlayerEntity.class)
 public abstract class ServerPlayerEntityMixin extends LivingEntityMixin implements WitheryServerPlayerEntity {
     @Inject(at = @At("RETURN"), method = "moveToWorld")
-    public void movePlayerToWorld(ServerWorld destination, CallbackInfoReturnable<@Nullable Entity> cir) {
+    private void movePlayerToWorld(ServerWorld destination, CallbackInfoReturnable<@Nullable Entity> cir) {
         this.loadSouls(destination);
     }
 
@@ -25,7 +25,7 @@ public abstract class ServerPlayerEntityMixin extends LivingEntityMixin implemen
     }
 
     @Inject(at = @At("HEAD"), method = "onDeath")
-    public void onPlayerDeath(DamageSource source, CallbackInfo ci) {
+    private void onPlayerDeath(DamageSource source, CallbackInfo ci) {
         this.unboundAllSouls();
     }
 }
