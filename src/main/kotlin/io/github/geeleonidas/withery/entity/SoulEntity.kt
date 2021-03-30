@@ -7,20 +7,23 @@ import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityType
 import net.minecraft.entity.LivingEntity
 import net.minecraft.entity.MovementType
+import net.minecraft.entity.effect.StatusEffects
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.Packet
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.util.math.Vec3d
 import net.minecraft.world.World
-import kotlin.math.sqrt
 
 open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, world) {
     var boundEntity: LivingEntity? = null
         protected set(value) {
-            if (value != null)
-                (value as WitheryLivingEntity).boundSoul(this)
+            (value as WitheryLivingEntity?)?.boundSoul(this)
             field = value
         }
+
+    fun unbound() {
+        this.boundEntity = null
+    }
 
     init { this.noClip = true }
 
@@ -34,11 +37,9 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         this.boundEntity = boundEntity
     }
 
-    fun unbound() { this.boundEntity = null }
+    private fun tickMovement() {
+        val boundEntity = this.boundEntity ?: return
 
-    private fun tickBoundEntity(boundEntity: LivingEntity?) {
-        if (boundEntity == null)
-            return
         if (boundEntity.isDead || boundEntity.removed)
             return
 
@@ -54,20 +55,48 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
                 return
             }
 
+            this.velocity =
+                this.velocity.add(
+                    toTarget.normalize().multiply(targetLenSq * 0.002)
+                )
+
             val dot = toTarget.dotProduct(this.velocity)
-            val velLenSq = this.velocity.lengthSquared()
 
             if (targetLenSq < 0.5)
                 this.velocity =
                     this.velocity.multiply(0.8)
-            else if (dot * dot / velLenSq < 0.5 * targetLenSq)
+            else if (dot < 0 || dot * dot / this.velocity.lengthSquared() < 0.5 * targetLenSq)
                 this.velocity =
-                    this.velocity.multiply(0.95).add(
-                        toTarget.normalize().multiply(targetLenSq * 0.0025)
+                    this.velocity.multiply(0.9).add(
+                        toTarget.normalize().multiply(targetLenSq * 0.01)
                     )
+        }
+    }
 
-            this.velocity =
-                this.velocity.add(toTarget.normalize().multiply(targetLenSq * 0.002))
+    private fun tickBoundEntity() {
+        val boundEntity = this.boundEntity
+
+        if (boundEntity == null) {
+            val aoe = this.boundingBox.expand(2.0)
+            val withering = this.world.getEntitiesByClass(LivingEntity::class.java, aoe)
+                { entity -> entity.hasStatusEffect(StatusEffects.WITHER) }
+            if (withering.isEmpty())
+                return
+
+            var nextBoundEntity = withering.removeAt(0)
+            var lowestDist = nextBoundEntity.pos.squaredDistanceTo(this.pos)
+            for (entity in withering) {
+                val currentDist = entity.pos.squaredDistanceTo(this.pos)
+                if (currentDist < lowestDist) {
+                    nextBoundEntity = entity
+                    lowestDist = currentDist
+                }
+            }
+
+            this.boundEntity = nextBoundEntity
+        } else {
+            if (boundEntity.isDead || boundEntity.removed)
+                return
         }
     }
 
@@ -78,9 +107,11 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         this.prevY = this.y
         this.prevZ = this.z
 
-        this.tickBoundEntity(this.boundEntity)
+        this.tickMovement()
 
         this.move(MovementType.SELF, this.velocity)
+
+        this.tickBoundEntity()
     }
 
     override fun createSpawnPacket(): Packet<*> = SoulSpawnS2CPacket(this)
