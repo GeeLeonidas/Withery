@@ -16,9 +16,19 @@ import net.minecraft.world.World
 import java.util.function.Predicate
 
 open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, world) {
+    companion object {
+        const val maxVisibleTicks = 20
+        const val sideLength = 0.125f
+    }
+
+    var remainingVisibleTicks = maxVisibleTicks
+        private set
     var boundEntity: LivingEntity? = null
         protected set(value) {
-            (value as WitheryLivingEntity?)?.boundSoul(this)
+            if (value is WitheryLivingEntity) {
+                value.boundSoul(this)
+                this.remainingVisibleTicks = maxVisibleTicks
+            }
             field = value
         }
 
@@ -38,6 +48,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         this.boundEntity = boundEntity
     }
 
+    // TODO: Figure out why the f*** this movement stutter bug keeps chasing me (herobrine???)
     private fun tickMovement() {
         val boundEntity = this.boundEntity ?: return
 
@@ -49,8 +60,12 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         val toTarget = targetPos.subtract(thisPos)
         val targetLenSq = toTarget.lengthSquared()
 
-        if (targetLenSq > 0.125 * 0.125) {
+        if (targetLenSq > sideLength * sideLength) {
             if (targetLenSq > 100) {
+                this.prevX = targetPos.x
+                this.prevY = targetPos.y // Prevents interpolation
+                this.prevZ = targetPos.z
+
                 this.updatePosition(targetPos.x, targetPos.y, targetPos.z)
                 this.velocity = Vec3d.ZERO
                 return
@@ -72,6 +87,9 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
                         toTarget.normalize().multiply(targetLenSq * 0.01)
                     )
         }
+
+        if (this.remainingVisibleTicks > 0)
+            this.remainingVisibleTicks--
     }
 
     private fun tickBoundEntity() {

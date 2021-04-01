@@ -38,7 +38,7 @@ class SoulEntityRenderer(entityRenderDispatcher: EntityRenderDispatcher):
     override fun shouldRender(entity: SoulEntity, frustum: Frustum, x: Double, y: Double, z: Double): Boolean {
         val isThirdPerson = MinecraftClient.getInstance().gameRenderer.camera.isThirdPerson
 
-        return if (isThirdPerson)
+        return if (entity.remainingVisibleTicks > 0 || isThirdPerson)
             super.shouldRender(entity, frustum, x, y, z)
         else
             false
@@ -64,21 +64,31 @@ class SoulEntityRenderer(entityRenderDispatcher: EntityRenderDispatcher):
         val velLenSq = entity.velocity.lengthSquared()
         matrices.translate(0.0, sin(time * PI / 20) / (4 + 4 * velLenSq), 0.0)
 
+        // Fade animation (only occurs in first person mode)
+        val isThirdPerson = MinecraftClient.getInstance().gameRenderer.camera.isThirdPerson
+        val remainingTicksSq = entity.remainingVisibleTicks * entity.remainingVisibleTicks
+        val maxTicksSq = SoulEntity.maxVisibleTicks * SoulEntity.maxVisibleTicks
+        val alpha =
+            if (isThirdPerson)
+                255
+            else
+                255 * remainingTicksSq / maxTicksSq
+
         // Don't ask me, I don't know either
         val vertexConsumer = vertexConsumers.getBuffer(textureLayers[getCurrentFrame(entity.age)])
         val entry = matrices.peek()
         val matrix4f = entry.model
         val matrix3f = entry.normal
-        draw(vertexConsumer, matrix4f, matrix3f, -0.5f, -0.25f, ux, vy)
-        draw(vertexConsumer, matrix4f, matrix3f, 0.5f, -0.25f, uy, vy)
-        draw(vertexConsumer, matrix4f, matrix3f, 0.5f, 0.75f, uy, vx)
-        draw(vertexConsumer, matrix4f, matrix3f, -0.5f, 0.75f, ux, vx)
+        draw(vertexConsumer, matrix4f, matrix3f, -0.5f, -0.25f, ux, vy, alpha)
+        draw(vertexConsumer, matrix4f, matrix3f, 0.5f, -0.25f, uy, vy, alpha)
+        draw(vertexConsumer, matrix4f, matrix3f, 0.5f, 0.75f, uy, vx, alpha)
+        draw(vertexConsumer, matrix4f, matrix3f, -0.5f, 0.75f, ux, vx, alpha)
 
         matrices.pop()
         super.render(entity, yaw, tickDelta, matrices, vertexConsumers, light)
     }
 
-    private fun draw(vertexConsumer: VertexConsumer, matrix4f: Matrix4f, matrix3f: Matrix3f, x: Float, y: Float, u: Float, v: Float, alpha: Int = 255) {
+    private fun draw(vertexConsumer: VertexConsumer, matrix4f: Matrix4f, matrix3f: Matrix3f, x: Float, y: Float, u: Float, v: Float, alpha: Int) {
         vertexConsumer.vertex(matrix4f, x, y, 0.0f).color(255, 255, 255, alpha).texture(u, v).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(matrix3f, 0.0f, 1.0f, 0.0f).next()
     }
 

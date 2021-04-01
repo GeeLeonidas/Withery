@@ -23,7 +23,7 @@ object Withery {
     val soulEntityType: EntityType<SoulEntity> = Registry.register(
             Registry.ENTITY_TYPE, makeId("soul"),
             FabricEntityTypeBuilder.create<SoulEntity>(SpawnGroup.MISC) { type, world -> SoulEntity(type, world) }
-                    .dimensions(EntityDimensions.fixed(0.125f, 0.125f)).build()
+                    .dimensions(EntityDimensions.fixed(SoulEntity.sideLength, SoulEntity.sideLength)).build()
     )
 
     fun log(msg: String, level: Level = Level.INFO) =
