@@ -4,6 +4,7 @@ import io.github.geeleonidas.withery.Withery
 import io.github.geeleonidas.withery.entity.SoulEntity
 import net.fabricmc.api.EnvType
 import net.fabricmc.api.Environment
+import net.minecraft.client.MinecraftClient
 import net.minecraft.client.render.*
 import net.minecraft.client.render.entity.EntityRenderDispatcher
 import net.minecraft.client.render.entity.EntityRenderer
@@ -32,6 +33,15 @@ class SoulEntityRenderer(entityRenderDispatcher: EntityRenderDispatcher):
         tempIds.forEach { tempLayers += RenderLayer.getEntityTranslucent(it) }
         textureIds = tempIds.toList()
         textureLayers = tempLayers.toList()
+    }
+
+    override fun shouldRender(entity: SoulEntity, frustum: Frustum, x: Double, y: Double, z: Double): Boolean {
+        val isThirdPerson = MinecraftClient.getInstance().gameRenderer.camera.isThirdPerson
+
+        return if (isThirdPerson)
+            super.shouldRender(entity, frustum, x, y, z)
+        else
+            false
     }
 
     override fun render(entity: SoulEntity, yaw: Float, tickDelta: Float, matrices: MatrixStack, vertexConsumers: VertexConsumerProvider, light: Int) {
