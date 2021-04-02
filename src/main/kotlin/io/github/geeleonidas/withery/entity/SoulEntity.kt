@@ -22,14 +22,6 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         const val maxVelLenSq = 0.5
     }
 
-    var offsetPos: Vec3d = Vec3d(
-        this.random.nextDouble() * 0.5 + 0.5,
-        this.random.nextDouble() * 0.75,
-        this.random.nextDouble() * 0.5 + 0.5
-    ).rotateY(this.random.nextFloat() * 360)
-    var accFactor =
-        0.002 * (0.75 - this.random.nextDouble() * 0.5)
-
     var remainingVisibleTicks = maxVisibleTicks
         private set
     var boundEntity: LivingEntity? = null
@@ -40,13 +32,15 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
             }
             field = value
         }
+    fun unbound() { boundEntity = null }
 
-    fun unbound() {
-        this.boundEntity = null
-    }
-
-    private fun getTargetPos(boundEntity: LivingEntity) =
-        boundEntity.boundingBox.center.add(offsetPos)
+    var offsetPos: Vec3d = Vec3d(
+        this.random.nextDouble() * 0.5 + 0.5,
+        this.random.nextDouble() * 0.75,
+        this.random.nextDouble() * 0.5 + 0.5
+    ).rotateY(this.random.nextFloat() * 360)
+    var accFactor =
+        0.002 * (0.75 - this.random.nextDouble() * 0.5)
 
     init { this.noClip = true }
 
@@ -65,6 +59,9 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         this.accFactor = spawnPacketInfo.right
     }
 
+    private fun getTargetPos(boundEntity: LivingEntity) =
+        boundEntity.boundingBox.center.add(offsetPos)
+
     private fun tickMovement() {
         val boundEntity = this.boundEntity ?: return
 
@@ -77,11 +74,12 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         val targetLenSq = toTarget.lengthSquared()
 
         if (targetLenSq > sideLength * sideLength) {
-            if (targetLenSq > 100) {
+            this.velocityDirty = true
+            this.velocityModified = true
+
+            if (targetLenSq > 144.0) {
                 this.teleport(targetPos.x, targetPos.y, targetPos.z)
                 this.velocity = Vec3d.ZERO
-                this.velocityDirty = true
-                this.velocityModified = true
                 return
             }
 
@@ -100,9 +98,6 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
             if (velLenSq + accLen < maxVelLenSq)
                 this.velocity =
                     this.velocity.add(toTarget.normalize().multiply(accLen))
-
-            this.velocityDirty = true
-            this.velocityModified = true
         }
 
         if (this.remainingVisibleTicks > 0)
