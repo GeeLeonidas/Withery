@@ -22,64 +22,6 @@ import java.util.function.Consumer;
 public abstract class LivingEntityMixin extends EntityMixin implements WitheryLivingEntity {
     @Shadow public abstract float getHealth();
 
-    private final HashSet<SoulEntity> boundSouls = new HashSet<>();
-    private int tagSoulQuantity = 0;
-
-    @SuppressWarnings("all") // Evil wizardry 😈
-    private LivingEntity getInstance() {
-        return (LivingEntity) ((Object) this);
-    }
-    
-    protected void forEachSoul(Consumer<SoulEntity> consumer) {
-        boundSouls.forEach(consumer);
-    }
-
-    protected void removeAllSouls() {
-        this.forEachSoul(Entity::remove);
-        boundSouls.clear();
-    }
-
-    protected void unboundAllSouls() {
-        this.forEachSoul(SoulEntity::unbound);
-        boundSouls.clear();
-        tagSoulQuantity = 0;
-    }
-
-    protected void loadSouls(ServerWorld world) {
-        final int soulQuantity = tagSoulQuantity;
-        tagSoulQuantity = 0;
-
-        for (int i = 0; i < soulQuantity; i++)
-            world.loadEntity(new SoulEntity(this.getInstance()));
-    }
-
-    // Interface Overrides
-
-    @Override
-    public void boundSoul(SoulEntity soulEntity) {
-        assert soulEntity.getBoundEntity() == this.getInstance();
-        boundSouls.add(soulEntity);
-        tagSoulQuantity++;
-    }
-
-    @Override
-    public void unboundSoul(SoulEntity soulEntity) {
-        if(!boundSouls.remove(soulEntity))
-            throw new NoSuchElementException();
-        soulEntity.unbound();
-        tagSoulQuantity--;
-    }
-
-    @Override
-    public void onLoad(ServerWorld world) {
-        this.loadSouls(world);
-    }
-
-    @Override
-    public float getPotentialHealth() {
-        return this.getHealth() + boundSouls.size();
-    }
-
     // Inject Overrides
 
     @Override
@@ -115,5 +57,65 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
     private void writeCustomDataToTag(CompoundTag tag, CallbackInfo ci) {
         if (tagSoulQuantity > 0)
             tag.putInt("soul_quantity", tagSoulQuantity);
+    }
+
+    // Interface Overrides
+
+    @Override
+    public void boundSoul(SoulEntity soulEntity) {
+        assert soulEntity.getBoundEntity() == this.getInstance();
+        boundSouls.add(soulEntity);
+        tagSoulQuantity++;
+    }
+
+    @Override
+    public void unboundSoul(SoulEntity soulEntity) {
+        if(!boundSouls.remove(soulEntity))
+            throw new NoSuchElementException();
+        soulEntity.unbound();
+        tagSoulQuantity--;
+    }
+
+    @Override
+    public void onLoad(ServerWorld world) {
+        this.loadSouls(world);
+    }
+
+    @Override
+    public float getPotentialHealth() {
+        return this.getHealth() + boundSouls.size();
+    }
+
+    // Util functions
+
+    private final HashSet<SoulEntity> boundSouls = new HashSet<>();
+    private int tagSoulQuantity = 0;
+
+    @SuppressWarnings("all") // Evil wizardry 😈
+    private LivingEntity getInstance() {
+        return (LivingEntity) ((Object) this);
+    }
+    
+    protected void forEachSoul(Consumer<SoulEntity> consumer) {
+        boundSouls.forEach(consumer);
+    }
+
+    protected void removeAllSouls() {
+        this.forEachSoul(Entity::remove);
+        boundSouls.clear();
+    }
+
+    protected void unboundAllSouls() {
+        this.forEachSoul(SoulEntity::unbound);
+        boundSouls.clear();
+        tagSoulQuantity = 0;
+    }
+
+    protected void loadSouls(ServerWorld world) {
+        final int soulQuantity = tagSoulQuantity;
+        tagSoulQuantity = 0;
+
+        for (int i = 0; i < soulQuantity; i++)
+            world.loadEntity(new SoulEntity(this.getInstance()));
     }
 }
