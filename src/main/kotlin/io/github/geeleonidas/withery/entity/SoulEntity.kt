@@ -11,6 +11,7 @@ import net.minecraft.entity.effect.StatusEffects
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.Packet
 import net.minecraft.server.world.ServerWorld
+import net.minecraft.util.Pair
 import net.minecraft.util.math.Vec3d
 import net.minecraft.world.World
 
@@ -26,6 +27,8 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         this.random.nextDouble() * 0.75,
         this.random.nextDouble() * 0.5 + 0.5
     ).rotateY(this.random.nextFloat() * 360)
+    var accFactor =
+        0.002 * (0.75 - this.random.nextDouble() * 0.5)
 
     var remainingVisibleTicks = maxVisibleTicks
         private set
@@ -52,15 +55,16 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         this.updatePosition(x, y, z)
     }
 
-    constructor(boundEntity: LivingEntity, packetOffsetPos: Vec3d?): this(Withery.soulEntityType, boundEntity.world) {
-        if (packetOffsetPos != null)
-            this.offsetPos = packetOffsetPos
-        val pos = this.getTargetPos(boundEntity)
+    constructor(boundEntity: LivingEntity): this(Withery.soulEntityType, boundEntity.world) {
+        val pos = boundEntity.boundingBox.center
         this.updatePosition(pos.x, pos.y, pos.z)
         this.boundEntity = boundEntity
     }
 
-    constructor(boundEntity: LivingEntity): this(boundEntity, null)
+    constructor(boundEntity: LivingEntity, spawnPacketInfo: Pair<Vec3d, Double>): this(boundEntity) {
+        this.offsetPos = spawnPacketInfo.left
+        this.accFactor = spawnPacketInfo.right
+    }
 
     private fun tickMovement() {
         val boundEntity = this.boundEntity ?: return
@@ -76,24 +80,30 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         if (targetLenSq > sideLength * sideLength) {
             if (targetLenSq > 100) {
                 this.teleport(targetPos.x, targetPos.y, targetPos.z)
+                this.velocity = Vec3d.ZERO
+                this.velocityDirty = true
+                this.velocityModified = true
                 return
             }
 
             val dot = toTarget.dotProduct(this.velocity)
 
-            if (targetLenSq < 0.5 && boundEntity.velocity.lengthSquared() < 0.1)
-                this.velocity =
-                    this.velocity.multiply(0.8)
-            else if (dot < 0 || dot * dot / this.velocity.lengthSquared() < 0.5 * targetLenSq)
+            var factor = this.accFactor
+            if (dot < 0 || dot * dot / this.velocity.lengthSquared() < 0.5 * targetLenSq) {
                 this.velocity =
                     this.velocity.multiply(0.95)
+                factor *= 2
+            }
 
             val velLenSq = this.velocity.lengthSquared()
-            val accLen = 0.002 * targetLenSq
+            val accLen = factor * targetLenSq
 
             if (velLenSq + accLen < maxVelLenSq)
                 this.velocity =
                     this.velocity.add(toTarget.normalize().multiply(accLen))
+
+            this.velocityDirty = true
+            this.velocityModified = true
         }
 
         if (this.remainingVisibleTicks > 0)
