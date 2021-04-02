@@ -11,6 +11,7 @@ import net.minecraft.entity.effect.StatusEffects
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.Packet
 import net.minecraft.server.world.ServerWorld
+import net.minecraft.util.math.Vec3d
 import net.minecraft.world.World
 
 open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, world) {
@@ -19,6 +20,12 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         const val sideLength = 0.125f
         const val maxVelLenSq = 0.5
     }
+
+    var offsetPos: Vec3d = Vec3d(
+        this.random.nextDouble() * 0.5 + 0.5,
+        this.random.nextDouble() * 0.75,
+        this.random.nextDouble() * 0.5 + 0.5
+    ).rotateY(this.random.nextFloat() * 360)
 
     var remainingVisibleTicks = maxVisibleTicks
         private set
@@ -31,6 +38,10 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
             field = value
         }
 
+    // TODO: Implement yaw based Y rotation
+    private fun getTargetPos(boundEntity: LivingEntity) =
+        boundEntity.boundingBox.center.add(offsetPos)
+
     fun unbound() {
         this.boundEntity = null
     }
@@ -41,11 +52,15 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         this.updatePosition(x, y, z)
     }
 
-    constructor(boundEntity: LivingEntity): this(Withery.soulEntityType, boundEntity.world) {
-        val pos = boundEntity.boundingBox.center
+    constructor(boundEntity: LivingEntity, packetOffsetPos: Vec3d?): this(Withery.soulEntityType, boundEntity.world) {
+        if (packetOffsetPos != null)
+            this.offsetPos = packetOffsetPos
+        val pos = this.getTargetPos(boundEntity)
         this.updatePosition(pos.x, pos.y, pos.z)
         this.boundEntity = boundEntity
     }
+
+    constructor(boundEntity: LivingEntity): this(boundEntity, null)
 
     private fun tickMovement() {
         val boundEntity = this.boundEntity ?: return
@@ -54,7 +69,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
             return
 
         val thisPos = this.boundingBox.center
-        val targetPos = boundEntity.boundingBox.center
+        val targetPos = this.getTargetPos(boundEntity)
         val toTarget = targetPos.subtract(thisPos)
         val targetLenSq = toTarget.lengthSquared()
 

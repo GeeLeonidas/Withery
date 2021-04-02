@@ -11,6 +11,7 @@ import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.network.NetworkThreadUtils;
+import net.minecraft.util.math.Vec3d;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
@@ -28,11 +29,16 @@ public abstract class ClientPlayNetworkHandlerMixin implements WitheryClientPlay
         double x = packet.getX();
         double y = packet.getY();
         double z = packet.getZ();
+        Vec3d offsetPos = new Vec3d(
+            packet.getOffsetX(),
+            packet.getOffsetY(),
+            packet.getOffsetZ()
+        );
 
         SoulEntity soulEntity;
         Entity bound = this.world.getEntityById(packet.getBoundId());
         if (bound instanceof LivingEntity)
-            soulEntity = new SoulEntity((LivingEntity) bound);
+            soulEntity = new SoulEntity((LivingEntity) bound, offsetPos);
         else
             soulEntity = new SoulEntity(this.world, x, y, z);
 

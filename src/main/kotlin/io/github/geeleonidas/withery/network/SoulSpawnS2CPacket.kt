@@ -17,29 +17,50 @@ class SoulSpawnS2CPacket(soulEntity: SoulEntity): Packet<ClientPlayPacketListene
         private set
     var z: Double
         private set
+    var offsetX: Double
+        private set
+    var offsetY: Double
+        private set
+    var offsetZ: Double
+        private set
 
     init {
         entityId = soulEntity.entityId
         boundId = soulEntity.boundEntity?.entityId ?: -0xDEAD
+
         x = soulEntity.x
         y = soulEntity.y
         z = soulEntity.z
+
+        offsetX = soulEntity.offsetPos.x
+        offsetY = soulEntity.offsetPos.y
+        offsetZ = soulEntity.offsetPos.z
     }
 
     override fun read(buf: PacketByteBuf) {
         entityId = buf.readInt()
         boundId = buf.readInt()
+
         x = buf.readDouble()
         y = buf.readDouble()
         z = buf.readDouble()
+
+        offsetX = buf.readDouble()
+        offsetY = buf.readDouble()
+        offsetZ = buf.readDouble()
     }
 
     override fun write(buf: PacketByteBuf) {
         buf.writeInt(entityId)
         buf.writeInt(boundId)
+
         buf.writeDouble(x)
         buf.writeDouble(y)
         buf.writeDouble(z)
+
+        buf.writeDouble(offsetX)
+        buf.writeDouble(offsetY)
+        buf.writeDouble(offsetZ)
     }
 
     override fun apply(listener: ClientPlayPacketListener) {
