@@ -41,13 +41,12 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
             field = value
         }
 
-    // TODO: Implement yaw based Y rotation
-    private fun getTargetPos(boundEntity: LivingEntity) =
-        boundEntity.boundingBox.center.add(offsetPos)
-
     fun unbound() {
         this.boundEntity = null
     }
+
+    private fun getTargetPos(boundEntity: LivingEntity) =
+        boundEntity.boundingBox.center.add(offsetPos)
 
     init { this.noClip = true }
 

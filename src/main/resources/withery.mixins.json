@@ -7,7 +7,6 @@
     "EntityMixin",
     "LivingEntityMixin",
     "ServerPlayerEntityMixin",
-    "ServerWorldMixin",
     "StatusEffectMixin"
   ],
   "client": [
