@@ -11,14 +11,13 @@ import net.minecraft.entity.effect.StatusEffects
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.Packet
 import net.minecraft.server.world.ServerWorld
-import net.minecraft.util.math.Vec3d
 import net.minecraft.world.World
-import java.util.function.Predicate
 
 open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, world) {
     companion object {
         const val maxVisibleTicks = 20
         const val sideLength = 0.125f
+        const val maxVelLenSq = 0.5
     }
 
     var remainingVisibleTicks = maxVisibleTicks
@@ -48,7 +47,6 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         this.boundEntity = boundEntity
     }
 
-    // TODO: Figure out why the f*** this movement stutter bug keeps chasing me (herobrine???)
     private fun tickMovement() {
         val boundEntity = this.boundEntity ?: return
 
@@ -62,30 +60,25 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
 
         if (targetLenSq > sideLength * sideLength) {
             if (targetLenSq > 100) {
-                this.prevX = targetPos.x
-                this.prevY = targetPos.y // Prevents interpolation
-                this.prevZ = targetPos.z
-
-                this.updatePosition(targetPos.x, targetPos.y, targetPos.z)
-                this.velocity = Vec3d.ZERO
+                this.teleport(targetPos.x, targetPos.y, targetPos.z)
                 return
             }
 
-            this.velocity =
-                this.velocity.add(
-                    toTarget.normalize().multiply(targetLenSq * 0.002)
-                )
-
             val dot = toTarget.dotProduct(this.velocity)
 
-            if (targetLenSq < 0.5)
+            if (targetLenSq < 0.5 && boundEntity.velocity.lengthSquared() < 0.1)
                 this.velocity =
                     this.velocity.multiply(0.8)
             else if (dot < 0 || dot * dot / this.velocity.lengthSquared() < 0.5 * targetLenSq)
                 this.velocity =
-                    this.velocity.multiply(0.9).add(
-                        toTarget.normalize().multiply(targetLenSq * 0.01)
-                    )
+                    this.velocity.multiply(0.95)
+
+            val velLenSq = this.velocity.lengthSquared()
+            val accLen = 0.002 * targetLenSq
+
+            if (velLenSq + accLen < maxVelLenSq)
+                this.velocity =
+                    this.velocity.add(toTarget.normalize().multiply(accLen))
         }
 
         if (this.remainingVisibleTicks > 0)
