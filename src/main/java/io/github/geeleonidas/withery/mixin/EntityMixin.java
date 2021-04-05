@@ -2,6 +2,8 @@ package io.github.geeleonidas.withery.mixin;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -14,6 +16,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(Entity.class)
 public abstract class EntityMixin {
     @Shadow public World world;
+
+    @Shadow public abstract Box getBoundingBox();
+
+    @Shadow public abstract Vec3d getPos();
 
     @Inject(at = @At("HEAD"), method = "remove")
     protected void remove(CallbackInfo ci) { }

@@ -14,7 +14,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Mixin(StatusEffect.class)
@@ -31,6 +30,7 @@ public abstract class StatusEffectMixin {
             if (entity.getHealth() > 1) {
                 Box aoe = entity.getBoundingBox().expand(4);
                 List<LivingEntity> allLiving = entity.world.getEntitiesByClass(LivingEntity.class, aoe, null);
+                allLiving.remove(entity);
 
                 for (Entity otherEntity : allLiving) {
                     float otherEntityPotHealth = ((WitheryLivingEntity) otherEntity).getPotentialHealth();

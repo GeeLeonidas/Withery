@@ -14,6 +14,7 @@ import net.minecraft.server.world.ServerWorld
 import net.minecraft.util.Pair
 import net.minecraft.util.math.Vec3d
 import net.minecraft.world.World
+import org.apache.logging.log4j.Level
 
 open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, world) {
     companion object {
@@ -25,14 +26,24 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
     var remainingVisibleTicks = maxVisibleTicks
         private set
     var boundEntity: LivingEntity? = null
-        protected set(value) {
-            if (value is WitheryLivingEntity) {
-                value.boundSoul(this)
-                this.remainingVisibleTicks = maxVisibleTicks
-            }
+        set(value) {
+            if (value == null)
+                if (this.isBoundTo(field))
+                    Withery.log("Tried to set boundEntity to null without proper sync, please use unbound instead", Level.ERROR)
+            else
+                if (!this.isBoundTo(value))
+                    Withery.log("Tried to set boundEntity to a new value without proper sync, please use boundTo instead", Level.ERROR)
+
+            this.remainingVisibleTicks = maxVisibleTicks
             field = value
         }
-    fun unbound() { boundEntity = null }
+
+    private fun boundTo(livingEntity: LivingEntity) =
+        (livingEntity as WitheryLivingEntity).boundSoul(this)
+    private fun unbound() =
+        (this.boundEntity as WitheryLivingEntity?)?.unboundSoul(this)
+    private fun isBoundTo(livingEntity: LivingEntity?) =
+        (livingEntity as WitheryLivingEntity?)?.containsSoul(this) ?: false
 
     var offsetPos: Vec3d = Vec3d(
         this.random.nextDouble() * 0.5 + 0.5,
@@ -51,7 +62,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
     constructor(boundEntity: LivingEntity): this(Withery.soulEntityType, boundEntity.world) {
         val pos = boundEntity.boundingBox.center
         this.updatePosition(pos.x, pos.y, pos.z)
-        this.boundEntity = boundEntity
+        this.boundTo(boundEntity)
     }
 
     constructor(boundEntity: LivingEntity, spawnPacketInfo: Pair<Vec3d, Double>): this(boundEntity) {
@@ -129,7 +140,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
             }
         }
 
-        this.boundEntity = nextBoundEntity
+        this.boundTo(nextBoundEntity)
     }
 
     override fun tick() {
@@ -152,14 +163,14 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
     override fun initDataTracker() = Unit
 
     override fun saveToTag(tag: CompoundTag?) =
-        if (boundEntity == null)
+        if (this.boundEntity == null)
             super.saveToTag(tag)
         else
             false
     override fun moveToWorld(destination: ServerWorld): Entity? = null
 
     override fun kill() {
-        (this.boundEntity as WitheryLivingEntity?)?.unboundSoul(this)
+        this.unbound()
         super.kill()
     }
 

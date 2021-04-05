@@ -5,8 +5,11 @@ import io.github.geeleonidas.withery.util.WitheryLivingEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.entity.effect.StatusEffect;
+import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.math.Box;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -14,15 +17,16 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.HashSet;
-import java.util.NoSuchElementException;
-import java.util.function.Consumer;
+import java.util.ArrayList;
+import java.util.List;
 
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityMixin extends EntityMixin implements WitheryLivingEntity {
     @Shadow public abstract float getHealth();
 
     // Inject Overrides
+
+    @Shadow public abstract boolean hasStatusEffect(StatusEffect effect);
 
     @Override
     protected void remove(CallbackInfo ci) {
@@ -39,7 +43,31 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
 
     @Inject(at= @At("TAIL"), method = "tick")
     private void tick(CallbackInfo ci) {
+        if (this.boundSouls.isEmpty())
+            return;
 
+        if (this.hasStatusEffect(StatusEffects.WITHER)) {
+            Box aoe = this.getBoundingBox().expand(4);
+            List<LivingEntity> allLiving = this.world.getEntitiesByClass(LivingEntity.class, aoe, null);
+            allLiving.remove(this.getInstance());
+
+            LivingEntity transferTarget = null;
+            double lowestDist = -1;
+            for (LivingEntity otherEntity : allLiving) {
+                double currentDist = otherEntity.getPos().squaredDistanceTo(this.getPos());
+                float otherPotHealth = ((WitheryLivingEntity) otherEntity).getPotentialHealth();
+                if (otherEntity.hasStatusEffect(StatusEffects.WITHER) && otherPotHealth < this.getPotentialHealth())
+                    if (transferTarget == null || currentDist < lowestDist) {
+                        transferTarget = otherEntity;
+                        lowestDist = currentDist;
+                    }
+            }
+
+            if (transferTarget != null)
+                ((WitheryLivingEntity) transferTarget).boundSoul(boundSouls.get(0));
+        } else {
+            // TODO: Soul Absorption
+        }
     }
 
     @Inject(at = @At("HEAD"), method = "onDeath")
@@ -63,22 +91,21 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
 
     @Override
     public void boundSoul(SoulEntity soulEntity) {
-        assert soulEntity.getBoundEntity() == this.getInstance();
         boundSouls.add(soulEntity);
+        soulEntity.setBoundEntity(this.getInstance());
         tagSoulQuantity++;
     }
 
     @Override
     public void unboundSoul(SoulEntity soulEntity) {
-        if(!boundSouls.remove(soulEntity))
-            throw new NoSuchElementException();
-        soulEntity.unbound();
+        boundSouls.remove(soulEntity);
+        soulEntity.setBoundEntity(null);
         tagSoulQuantity--;
     }
 
     @Override
-    public void onLoad(ServerWorld world) {
-        this.loadSouls(world);
+    public boolean containsSoul(SoulEntity soulEntity) {
+        return boundSouls.contains(soulEntity);
     }
 
     @Override
@@ -86,28 +113,33 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
         return this.getHealth() + boundSouls.size();
     }
 
+    @Override
+    public void onLoad(ServerWorld world) {
+        this.loadSouls(world);
+    }
+
     // Util functions
 
-    private final HashSet<SoulEntity> boundSouls = new HashSet<>();
+    private final ArrayList<SoulEntity> boundSouls = new ArrayList<>();
     private int tagSoulQuantity = 0;
 
     @SuppressWarnings("all") // Evil wizardry 😈
     private LivingEntity getInstance() {
         return (LivingEntity) ((Object) this);
     }
-    
-    protected void forEachSoul(Consumer<SoulEntity> consumer) {
-        boundSouls.forEach(consumer);
-    }
 
     protected void removeAllSouls() {
-        this.forEachSoul(Entity::remove);
+        for (SoulEntity soulEntity : boundSouls)
+            soulEntity.remove();
         boundSouls.clear();
     }
 
     protected void unboundAllSouls() {
-        this.forEachSoul(SoulEntity::unbound);
-        boundSouls.clear();
+        for (int i = 0; i < boundSouls.size(); i++) {
+            SoulEntity soulEntity = boundSouls.remove(i);
+            soulEntity.setBoundEntity(null);
+        }
+
         tagSoulQuantity = 0;
     }
 
