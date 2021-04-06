@@ -28,6 +28,8 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
 
     @Shadow public abstract boolean hasStatusEffect(StatusEffect effect);
 
+    @Shadow public int hurtTime;
+
     @Override
     protected void remove(CallbackInfo ci) {
         this.removeAllSouls();
@@ -45,6 +47,16 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
     private void tick(CallbackInfo ci) {
         if (this.boundSouls.isEmpty())
             return;
+
+        if (this.soulTime > 0) {
+            this.soulTime--;
+            return;
+        }
+
+        if (this.hurtTime > 0)
+            return;
+
+        this.soulTime = 20; // maxSoulTime
 
         if (this.hasStatusEffect(StatusEffects.WITHER)) {
             Box aoe = this.getBoundingBox().expand(4);
@@ -64,7 +76,7 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
             }
 
             if (transferTarget != null)
-                ((WitheryLivingEntity) transferTarget).boundSoul(boundSouls.get(0));
+                ((WitheryLivingEntity) transferTarget).boundSoul(this.boundSouls.get(0));
         } else {
             // TODO: Soul Absorption
         }
@@ -78,39 +90,39 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
     @Inject(at = @At("TAIL"), method = "readCustomDataFromTag")
     private void readCustomDataFromTag(CompoundTag tag, CallbackInfo ci) {
         if (tag.contains("soul_quantity"))
-            tagSoulQuantity = tag.getInt("soul_quantity");
+            this.tagSoulQuantity = tag.getInt("soul_quantity");
     }
 
     @Inject(at = @At("TAIL"), method = "writeCustomDataToTag")
     private void writeCustomDataToTag(CompoundTag tag, CallbackInfo ci) {
-        if (tagSoulQuantity > 0)
-            tag.putInt("soul_quantity", tagSoulQuantity);
+        if (this.tagSoulQuantity > 0)
+            tag.putInt("soul_quantity", this.tagSoulQuantity);
     }
 
     // Interface Overrides
 
     @Override
     public void boundSoul(SoulEntity soulEntity) {
-        boundSouls.add(soulEntity);
+        this.boundSouls.add(soulEntity);
         soulEntity.setBoundEntity(this.getInstance());
-        tagSoulQuantity++;
+        this.tagSoulQuantity++;
     }
 
     @Override
     public void unboundSoul(SoulEntity soulEntity) {
-        boundSouls.remove(soulEntity);
+        this.boundSouls.remove(soulEntity);
         soulEntity.setBoundEntity(null);
-        tagSoulQuantity--;
+        this.tagSoulQuantity--;
     }
 
     @Override
     public boolean containsSoul(SoulEntity soulEntity) {
-        return boundSouls.contains(soulEntity);
+        return this.boundSouls.contains(soulEntity);
     }
 
     @Override
     public float getPotentialHealth() {
-        return this.getHealth() + boundSouls.size();
+        return this.getHealth() + this.boundSouls.size();
     }
 
     @Override
@@ -123,29 +135,32 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
     private final ArrayList<SoulEntity> boundSouls = new ArrayList<>();
     private int tagSoulQuantity = 0;
 
+    private int soulTime = 0;
+
     @SuppressWarnings("all") // Evil wizardry 😈
     private LivingEntity getInstance() {
         return (LivingEntity) ((Object) this);
     }
 
     protected void removeAllSouls() {
-        for (SoulEntity soulEntity : boundSouls)
+        for (SoulEntity soulEntity : this.boundSouls)
             soulEntity.remove();
-        boundSouls.clear();
+        this.boundSouls.clear();
     }
 
     protected void unboundAllSouls() {
-        for (int i = 0; i < boundSouls.size(); i++) {
-            SoulEntity soulEntity = boundSouls.remove(i);
+        for (int i = 0; i < this.boundSouls.size(); i++) {
+            SoulEntity soulEntity = this.boundSouls.remove(i);
             soulEntity.setBoundEntity(null);
         }
 
-        tagSoulQuantity = 0;
+        this.soulTime = 0;
+        this.tagSoulQuantity = 0;
     }
 
     protected void loadSouls(ServerWorld world) {
-        final int soulQuantity = tagSoulQuantity;
-        tagSoulQuantity = 0;
+        final int soulQuantity = this.tagSoulQuantity;
+        this.tagSoulQuantity = 0;
 
         for (int i = 0; i < soulQuantity; i++)
             world.loadEntity(new SoulEntity(this.getInstance()));
