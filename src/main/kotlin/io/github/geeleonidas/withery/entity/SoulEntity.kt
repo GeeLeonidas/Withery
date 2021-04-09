@@ -87,8 +87,8 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
 
     private fun tickMovement() {
         if (this.boundEntity == null) {
-            if (this.velocity.lengthSquared() > sideLength * sideLength) {
-                this.velocity = this.velocity.multiply(0.9)
+            if (this.velocity.lengthSquared() > sideLength * sideLength * 0.125) {
+                this.velocity = this.velocity.multiply(0.82)
                 this.velocityModified = true
                 this.velocityDirty = true
             }
@@ -114,15 +114,12 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
 
             val dot = toTarget.dotProduct(this.velocity)
 
-            var factor = this.accFactor
-            if (dot < 0 || dot * dot / this.velocity.lengthSquared() < 0.5 * targetLenSq) {
+            if (dot < 0 || dot * dot / this.velocity.lengthSquared() < 0.5 * targetLenSq)
                 this.velocity =
                     this.velocity.multiply(0.95)
-                factor *= 2
-            }
 
             val velLenSq = this.velocity.lengthSquared()
-            val accLen = factor * targetLenSq
+            val accLen = this.accFactor * targetLenSq
 
             if (velLenSq + accLen < maxVelLenSq)
                 this.velocity =
