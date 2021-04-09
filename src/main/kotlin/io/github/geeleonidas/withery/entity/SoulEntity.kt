@@ -25,16 +25,25 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
 
     var remainingVisibleTicks = maxVisibleTicks
         private set
+    var isGoingToBeAbsorbed = false
     var boundEntity: LivingEntity? = null
         set(value) {
-            if (value == null)
+            if (value == null) {
                 if (this.isBoundTo(field))
-                    Withery.log("Tried to set boundEntity to null without proper sync, please use unbound instead", Level.ERROR)
-            else
+                    Withery.log(
+                        "Tried to set boundEntity to null without proper sync, please use unbound instead",
+                        Level.ERROR
+                    )
+            } else {
                 if (!this.isBoundTo(value))
-                    Withery.log("Tried to set boundEntity to a new value without proper sync, please use boundTo instead", Level.ERROR)
+                    Withery.log(
+                        "Tried to set boundEntity to a new value without proper sync, please use boundTo instead",
+                        Level.ERROR
+                    )
+            }
 
             this.remainingVisibleTicks = maxVisibleTicks
+            this.isGoingToBeAbsorbed = false
             field = value
         }
 
@@ -71,13 +80,22 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
     }
 
     private fun getTargetPos(boundEntity: LivingEntity) =
-        boundEntity.boundingBox.center.add(offsetPos)
+        if (isGoingToBeAbsorbed)
+            boundEntity.boundingBox.center
+        else
+            boundEntity.boundingBox.center.add(offsetPos)
 
     private fun tickMovement() {
-        val boundEntity = this.boundEntity ?: return
-
-        if (boundEntity.isDead || boundEntity.removed)
+        if (this.boundEntity == null) {
+            if (this.velocity.lengthSquared() > sideLength * sideLength) {
+                this.velocity = this.velocity.multiply(0.9)
+                this.velocityModified = true
+                this.velocityDirty = true
+            }
             return
+        }
+
+        val boundEntity = this.boundEntity!!
 
         val thisPos = this.boundingBox.center
         val targetPos = this.getTargetPos(boundEntity)
@@ -85,10 +103,10 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         val targetLenSq = toTarget.lengthSquared()
 
         if (targetLenSq > sideLength * sideLength) {
-            this.velocityDirty = true
             this.velocityModified = true
+            this.velocityDirty = true
 
-            if (targetLenSq > 144.0) {
+            if (targetLenSq > 144) {
                 this.teleport(targetPos.x, targetPos.y, targetPos.z)
                 this.velocity = Vec3d.ZERO
                 return
@@ -115,12 +133,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
             this.remainingVisibleTicks--
     }
 
-    private fun tickBoundEntity() {
-        val boundEntity = this.boundEntity
-
-        if (boundEntity != null)
-            return
-
+    private fun tickSoulClaim() {
         val aoe = this.boundingBox.expand(2.0)
         val withering = this.world.getEntitiesByClass(LivingEntity::class.java, aoe) { entity ->
             entity.hasStatusEffect(StatusEffects.WITHER) &&
@@ -143,6 +156,16 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         this.boundTo(nextBoundEntity)
     }
 
+    private fun tickSoulAbsorption() {
+        val boundEntity = this.boundEntity!!
+
+        val aoe = boundEntity.boundingBox.expand(-sideLength.toDouble())
+        if (aoe.intersects(this.boundingBox)) {
+            boundEntity.heal(1f)
+            this.kill()
+        }
+    }
+
     override fun tick() {
         super.tick()
 
@@ -150,11 +173,14 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         this.prevY = this.y
         this.prevZ = this.z
 
+        if (this.boundEntity == null)
+            this.tickSoulClaim()
+        else if (this.isGoingToBeAbsorbed)
+            this.tickSoulAbsorption()
+
         this.tickMovement()
 
         this.move(MovementType.SELF, this.velocity)
-
-        this.tickBoundEntity()
     }
 
     override fun createSpawnPacket(): Packet<*> = SoulSpawnS2CPacket(this)

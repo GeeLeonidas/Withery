@@ -30,6 +30,10 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
 
     @Shadow public int hurtTime;
 
+    @Shadow public abstract float getMaxHealth();
+
+    @Shadow public abstract void heal(float amount);
+
     @Override
     protected void remove(CallbackInfo ci) {
         this.removeAllSouls();
@@ -48,6 +52,13 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
         if (this.boundSouls.isEmpty())
             return;
 
+        float overflow = this.getPotentialHealth() - this.getMaxHealth();
+        for (int i = 0; i < overflow; i++)
+            this.unboundSoul(boundSouls.get(i));
+
+        if (this.hasStatusEffect(StatusEffects.WITHER)) // Checks every tick
+            this.cancelSoulAbsorption();
+
         if (this.soulTime > 0) {
             this.soulTime--;
             return;
@@ -58,28 +69,10 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
 
         this.soulTime = 20; // maxSoulTime
 
-        if (this.hasStatusEffect(StatusEffects.WITHER)) {
-            Box aoe = this.getBoundingBox().expand(4);
-            List<LivingEntity> allLiving = this.world.getEntitiesByClass(LivingEntity.class, aoe, null);
-            allLiving.remove(this.getInstance());
-
-            LivingEntity transferTarget = null;
-            double lowestDist = -1;
-            for (LivingEntity otherEntity : allLiving) {
-                double currentDist = otherEntity.getPos().squaredDistanceTo(this.getPos());
-                float otherPotHealth = ((WitheryLivingEntity) otherEntity).getPotentialHealth();
-                if (otherEntity.hasStatusEffect(StatusEffects.WITHER) && otherPotHealth < this.getPotentialHealth())
-                    if (transferTarget == null || currentDist < lowestDist) {
-                        transferTarget = otherEntity;
-                        lowestDist = currentDist;
-                    }
-            }
-
-            if (transferTarget != null)
-                ((WitheryLivingEntity) transferTarget).boundSoul(this.boundSouls.get(0));
-        } else {
-            // TODO: Soul Absorption
-        }
+        if (this.hasStatusEffect(StatusEffects.WITHER)) // Checks every 20 ticks
+            this.tickSoulTransfer();
+        else
+            this.markSoulAbsorption();
     }
 
     @Inject(at = @At("HEAD"), method = "onDeath")
@@ -149,13 +142,43 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
     }
 
     protected void unboundAllSouls() {
-        for (int i = 0; i < this.boundSouls.size(); i++) {
-            SoulEntity soulEntity = this.boundSouls.remove(i);
-            soulEntity.setBoundEntity(null);
+        for (SoulEntity soulEntity : boundSouls)
+            this.unboundSoul(soulEntity);
+        this.soulTime = 0;
+    }
+
+    protected void tickSoulTransfer() {
+        Box aoe = this.getBoundingBox().expand(4);
+        List<LivingEntity> allLiving = this.world.getEntitiesByClass(LivingEntity.class, aoe, null);
+        allLiving.remove(this.getInstance());
+
+        LivingEntity transferTarget = null;
+        double lowestDist = -1;
+        for (LivingEntity otherEntity : allLiving) {
+            double currentDist = otherEntity.getPos().squaredDistanceTo(this.getPos());
+            float otherPotHealth = ((WitheryLivingEntity) otherEntity).getPotentialHealth();
+            if (otherEntity.hasStatusEffect(StatusEffects.WITHER) && otherPotHealth < this.getPotentialHealth())
+                if (transferTarget == null || currentDist < lowestDist) {
+                    transferTarget = otherEntity;
+                    lowestDist = currentDist;
+                }
         }
 
-        this.soulTime = 0;
-        this.tagSoulQuantity = 0;
+        if (transferTarget != null)
+            ((WitheryLivingEntity) transferTarget).boundSoul(this.boundSouls.get(0));
+    }
+
+    protected void markSoulAbsorption() {
+        for (SoulEntity soulEntity : boundSouls)
+            if (!soulEntity.isGoingToBeAbsorbed()) {
+                soulEntity.setGoingToBeAbsorbed(true);
+                break;
+            }
+    }
+
+    protected void cancelSoulAbsorption() {
+        for (SoulEntity soulEntity : boundSouls)
+            soulEntity.setGoingToBeAbsorbed(false);
     }
 
     protected void loadSouls(ServerWorld world) {
