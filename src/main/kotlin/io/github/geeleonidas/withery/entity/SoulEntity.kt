@@ -2,6 +2,7 @@ package io.github.geeleonidas.withery.entity
 
 import io.github.geeleonidas.withery.Withery
 import io.github.geeleonidas.withery.network.SoulSpawnS2CPacket
+import io.github.geeleonidas.withery.registry.WitheryEntityTypes
 import io.github.geeleonidas.withery.util.WitheryLivingEntity
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityType
@@ -74,11 +75,11 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
 
     init { this.noClip = true }
 
-    constructor(world: World, x: Double, y: Double, z: Double): this(Withery.soulEntityType, world) {
+    constructor(world: World, x: Double, y: Double, z: Double): this(WitheryEntityTypes.soulEntity, world) {
         this.updatePosition(x, y, z)
     }
 
-    constructor(boundEntity: LivingEntity): this(Withery.soulEntityType, boundEntity.world) {
+    constructor(boundEntity: LivingEntity): this(WitheryEntityTypes.soulEntity, boundEntity.world) {
         val pos = boundEntity.boundingBox.center
         this.updatePosition(pos.x, pos.y, pos.z)
         this.boundTo(boundEntity)

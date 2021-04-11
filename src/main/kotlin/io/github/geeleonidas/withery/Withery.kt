@@ -1,14 +1,12 @@
 package io.github.geeleonidas.withery
 
-import io.github.geeleonidas.withery.entity.SoulEntity
 import io.github.geeleonidas.withery.event.WitheryEntityLoadEvent
-import net.fabricmc.fabric.api.`object`.builder.v1.entity.FabricEntityTypeBuilder
+import io.github.geeleonidas.withery.registry.WitheryItems
+import io.github.geeleonidas.withery.registry.WitheryRegistry
+import net.fabricmc.fabric.api.client.itemgroup.FabricItemGroupBuilder
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents
-import net.minecraft.entity.EntityDimensions
-import net.minecraft.entity.EntityType
-import net.minecraft.entity.SpawnGroup
+import net.minecraft.item.ItemStack
 import net.minecraft.util.Identifier
-import net.minecraft.util.registry.Registry
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 
@@ -18,11 +16,10 @@ object Withery {
 
     private val logger = LogManager.getLogger()
 
-    val soulEntityType: EntityType<SoulEntity> = Registry.register(
-            Registry.ENTITY_TYPE, makeId("soul"),
-            FabricEntityTypeBuilder.create<SoulEntity>(SpawnGroup.MISC) { type, world -> SoulEntity(type, world) }
-                .dimensions(EntityDimensions.fixed(SoulEntity.sideLength, SoulEntity.sideLength)).build()
-    )
+    val mainItemGroup = FabricItemGroupBuilder.create(makeId("main")).appendItems {
+        for (item in WitheryItems.allItems)
+            it.add(ItemStack(item))
+    }.build()
 
     fun log(msg: String, level: Level = Level.INFO) =
         logger.log(level, "[$modName] $msg")
@@ -32,6 +29,7 @@ object Withery {
 }
 
 fun init() {
+    WitheryRegistry.load()
     ServerEntityEvents.ENTITY_LOAD.register(WitheryEntityLoadEvent)
     Withery.log("Minecraft withered away!")
 }

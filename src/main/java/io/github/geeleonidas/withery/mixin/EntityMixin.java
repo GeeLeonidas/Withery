@@ -1,6 +1,7 @@
 package io.github.geeleonidas.withery.mixin;
 
 import net.minecraft.entity.Entity;
+import net.minecraft.item.ItemStack;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
@@ -20,6 +21,8 @@ public abstract class EntityMixin {
     @Shadow public abstract Box getBoundingBox();
 
     @Shadow public abstract Vec3d getPos();
+
+    @Shadow public abstract Iterable<ItemStack> getItemsHand();
 
     @Inject(at = @At("HEAD"), method = "remove")
     protected void remove(CallbackInfo ci) { }
