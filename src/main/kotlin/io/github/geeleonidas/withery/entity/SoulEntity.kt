@@ -21,11 +21,20 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         const val maxVisibleTicks = 20
         const val sideLength = 0.125f
         const val maxVelLenSq = 0.5
+        const val maxTargetLenSq = 144
     }
 
     var remainingVisibleTicks = maxVisibleTicks
         private set
+    private var hasReachedTargetPos = false
     var isGoingToBeAbsorbed = false
+        set(value) {
+            if (field != value)
+                this.hasReachedTargetPos = false
+            field = value
+        }
+    private val hasSoulAbsorptionStarted: Boolean
+        get() = this.isGoingToBeAbsorbed && this.hasReachedTargetPos
     var boundEntity: LivingEntity? = null
         set(value) {
             if (value == null) {
@@ -44,6 +53,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
 
             this.remainingVisibleTicks = maxVisibleTicks
             this.isGoingToBeAbsorbed = false
+            this.hasReachedTargetPos = false
             field = value
         }
 
@@ -80,7 +90,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
     }
 
     private fun getTargetPos(boundEntity: LivingEntity) =
-        if (isGoingToBeAbsorbed)
+        if (this.hasSoulAbsorptionStarted)
             boundEntity.boundingBox.center
         else
             boundEntity.boundingBox.center.add(offsetPos)
@@ -106,7 +116,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
             this.velocityModified = true
             this.velocityDirty = true
 
-            if (targetLenSq > 144) {
+            if (targetLenSq > maxTargetLenSq) {
                 this.teleport(targetPos.x, targetPos.y, targetPos.z)
                 this.velocity = Vec3d.ZERO
                 return
@@ -114,16 +124,28 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
 
             val dot = toTarget.dotProduct(this.velocity)
 
-            if (dot < 0 || dot * dot / this.velocity.lengthSquared() < 0.5 * targetLenSq)
+            if (dot < 0 || dot * dot / this.velocity.lengthSquared() < 0.75 * targetLenSq)
                 this.velocity =
                     this.velocity.multiply(0.95)
 
             val velLenSq = this.velocity.lengthSquared()
-            val accLen = this.accFactor * targetLenSq
+            val accLen = if (!this.hasSoulAbsorptionStarted)
+                this.accFactor * targetLenSq
+            else
+                this.accFactor * 4 * (1 - targetLenSq / maxTargetLenSq)
 
             if (velLenSq + accLen < maxVelLenSq)
                 this.velocity =
                     this.velocity.add(toTarget.normalize().multiply(accLen))
+        }
+
+        if (this.isGoingToBeAbsorbed && !this.hasReachedTargetPos) {
+            if (this.velocity.lengthSquared() > 0.01) {
+                if (targetLenSq < 0.7)
+                    this.velocity =
+                        this.velocity.multiply(0.85)
+            } else
+                this.hasReachedTargetPos = true
         }
 
         if (this.remainingVisibleTicks > 0)
@@ -156,7 +178,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
     private fun tickSoulAbsorption() {
         val boundEntity = this.boundEntity!!
 
-        val aoe = boundEntity.boundingBox.expand(-sideLength.toDouble())
+        val aoe = boundEntity.boundingBox.expand(-sideLength.toDouble() * 0.5)
         if (aoe.intersects(this.boundingBox)) {
             boundEntity.heal(1f)
             this.kill()
@@ -172,7 +194,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
 
         if (this.boundEntity == null)
             this.tickSoulClaim()
-        else if (this.isGoingToBeAbsorbed)
+        else if (this.hasSoulAbsorptionStarted)
             this.tickSoulAbsorption()
 
         this.tickMovement()
@@ -194,6 +216,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
 
     override fun kill() {
         this.unbound()
+        this.remainingVisibleTicks = 0
         super.kill()
     }
 

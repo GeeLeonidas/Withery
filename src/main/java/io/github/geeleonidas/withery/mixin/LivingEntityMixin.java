@@ -53,8 +53,7 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
             return;
 
         float overflow = this.getPotentialHealth() - this.getMaxHealth();
-        for (int i = 0; i < overflow; i++)
-            this.unboundSoul(boundSouls.get(i));
+        this.unboundLastSouls((int) overflow);
 
         if (this.hasStatusEffect(StatusEffects.WITHER)) // Checks every tick
             this.cancelSoulAbsorption();
@@ -141,9 +140,13 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
         this.boundSouls.clear();
     }
 
+    protected void unboundLastSouls(int n) {
+        for (int i = 0; i < n; i++)
+            this.unboundSoul(this.boundSouls.get(this.boundSouls.size() - 1));
+    }
+
     protected void unboundAllSouls() {
-        for (SoulEntity soulEntity : boundSouls)
-            this.unboundSoul(soulEntity);
+        this.unboundLastSouls(this.boundSouls.size());
         this.soulTime = 0;
     }
 
@@ -157,23 +160,24 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
         for (LivingEntity otherEntity : allLiving) {
             double currentDist = otherEntity.getPos().squaredDistanceTo(this.getPos());
             float otherPotHealth = ((WitheryLivingEntity) otherEntity).getPotentialHealth();
-            if (otherEntity.hasStatusEffect(StatusEffects.WITHER) && otherPotHealth < this.getPotentialHealth())
-                if (transferTarget == null || currentDist < lowestDist) {
-                    transferTarget = otherEntity;
-                    lowestDist = currentDist;
-                }
+            if (
+                otherEntity.hasStatusEffect(StatusEffects.WITHER) &&
+                otherPotHealth < otherEntity.getMaxHealth() &&
+                otherPotHealth < this.getPotentialHealth() &&
+                (transferTarget == null || currentDist < lowestDist)
+            ) {
+                transferTarget = otherEntity;
+                lowestDist = currentDist;
+            }
         }
 
         if (transferTarget != null)
-            ((WitheryLivingEntity) transferTarget).boundSoul(this.boundSouls.get(0));
+            ((WitheryLivingEntity) transferTarget).boundSoul(this.boundSouls.get(this.boundSouls.size() - 1));
     }
 
     protected void markSoulAbsorption() {
         for (SoulEntity soulEntity : boundSouls)
-            if (!soulEntity.isGoingToBeAbsorbed()) {
-                soulEntity.setGoingToBeAbsorbed(true);
-                break;
-            }
+            soulEntity.setGoingToBeAbsorbed(true);
     }
 
     protected void cancelSoulAbsorption() {
