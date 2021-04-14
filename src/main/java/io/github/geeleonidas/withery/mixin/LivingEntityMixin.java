@@ -24,15 +24,13 @@ import java.util.List;
 public abstract class LivingEntityMixin extends EntityMixin implements WitheryLivingEntity {
     @Shadow public abstract float getHealth();
 
-    // Inject Overrides
-
     @Shadow public abstract boolean hasStatusEffect(StatusEffect effect);
 
     @Shadow public int hurtTime;
 
     @Shadow public abstract float getMaxHealth();
 
-    @Shadow public abstract void heal(float amount);
+    // Inject Overrides
 
     @Override
     protected void remove(CallbackInfo ci) {
@@ -55,9 +53,6 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
         float overflow = this.getPotentialHealth() - this.getMaxHealth();
         this.unboundLastSouls((int) overflow);
 
-        if (this.hasStatusEffect(StatusEffects.WITHER)) // Checks every tick
-            this.cancelSoulAbsorption();
-
         if (this.soulTime > 0) {
             this.soulTime--;
             return;
@@ -70,8 +65,6 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
 
         if (this.hasStatusEffect(StatusEffects.WITHER)) // Checks every 20 ticks
             this.tickSoulTransfer();
-        else
-            this.markSoulAbsorption();
     }
 
     @Inject(at = @At("HEAD"), method = "onDeath")
@@ -173,16 +166,6 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
 
         if (transferTarget != null)
             ((WitheryLivingEntity) transferTarget).boundSoul(this.boundSouls.get(this.boundSouls.size() - 1));
-    }
-
-    protected void markSoulAbsorption() {
-        for (SoulEntity soulEntity : boundSouls)
-            soulEntity.setGoingToBeAbsorbed(true);
-    }
-
-    protected void cancelSoulAbsorption() {
-        for (SoulEntity soulEntity : boundSouls)
-            soulEntity.setGoingToBeAbsorbed(false);
     }
 
     protected void loadSouls(ServerWorld world) {
