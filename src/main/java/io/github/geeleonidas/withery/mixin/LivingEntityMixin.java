@@ -30,6 +30,8 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
 
     // Inject Overrides
 
+    @Shadow public abstract float getMaxHealth();
+
     @Override
     protected void remove(CallbackInfo ci) {
         this.removeAllSouls();
@@ -47,6 +49,10 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
     private void tick(CallbackInfo ci) {
         if (this.boundSouls.isEmpty())
             return;
+
+        float overflow = this.getPotentialHealth() - this.getMaxHealth();
+        for (int i = 0; i < overflow; i++)
+            this.unboundSoul(this.getLastSoul());
 
         if (this.soulTime > 0) {
             this.soulTime--;

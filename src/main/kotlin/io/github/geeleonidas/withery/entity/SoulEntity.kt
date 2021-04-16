@@ -4,7 +4,6 @@ import io.github.geeleonidas.withery.Withery
 import io.github.geeleonidas.withery.network.SoulSpawnS2CPacket
 import io.github.geeleonidas.withery.registry.WitheryEntityTypes
 import io.github.geeleonidas.withery.util.WitheryLivingEntity
-import io.github.geeleonidas.withery.util.witheryImpl
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityType
 import net.minecraft.entity.LivingEntity
@@ -28,9 +27,10 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         const val baseLerpDelta = 0.01
     }
 
+    // State variables
     var remainingVisibleTicks = maxVisibleTicks
         private set
-    private var forceWandering = false
+    var forceWandering = false
     var boundEntity: LivingEntity? = null
         set(value) {
             if (value == null) {
@@ -51,6 +51,8 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
             field = value
         }
 
+    // Random offsets/factors
+
     var offsetPos: Vec3d = Vec3d(
         this.random.nextDouble() * 0.5 + 0.5,
         this.random.nextDouble() * 0.75,
@@ -58,8 +60,12 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
     ).rotateY(this.random.nextFloat() * 360)
     var deltaFactor = 0.75 - this.random.nextDouble() * 0.5
 
+    // Macros
+
     private val isReadyToAbsorption: Boolean
         get() = !this.forceWandering && this.boundEntity?.hasStatusEffect(StatusEffects.WITHER) == false
+    private val LivingEntity.witheryImpl: WitheryLivingEntity
+        get() = this as WitheryLivingEntity
 
     private fun boundTo(livingEntity: LivingEntity) =
         livingEntity.witheryImpl.boundSoul(this)
@@ -67,6 +73,8 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         this.boundEntity?.witheryImpl?.unboundSoul(this)
     private fun isBoundTo(livingEntity: LivingEntity?) =
         livingEntity != null && livingEntity.witheryImpl.containsSoul(this)
+
+    // Init
 
     init { this.noClip = true }
 
@@ -85,11 +93,30 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         this.deltaFactor = spawnPacketInfo.right
     }
 
+    // Util
+
     private fun getTargetPos(boundEntity: LivingEntity) =
         if (this.isReadyToAbsorption)
             boundEntity.boundingBox.center
         else
             boundEntity.boundingBox.center.add(offsetPos)
+
+    private fun floorVelocity() {
+        var velX = this.velocity.x
+        var velY = this.velocity.y
+        var velZ = this.velocity.z
+
+        if (abs(velX) < velEpsilon)
+            velX = 0.0
+        if (abs(velY) < velEpsilon)
+            velY = 0.0
+        if (abs(velZ) < velEpsilon)
+            velZ = 0.0
+
+        this.velocity = Vec3d(velX, velY, velZ)
+    }
+
+    // Tick-related functions
 
     private fun tickMoveToTarget() {
         if (this.boundEntity == null) {
@@ -165,21 +192,6 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         }
     }
 
-    private fun floorVelocity() {
-        var velX = this.velocity.x
-        var velY = this.velocity.y
-        var velZ = this.velocity.z
-
-        if (abs(velX) < velEpsilon)
-            velX = 0.0
-        if (abs(velY) < velEpsilon)
-            velY = 0.0
-        if (abs(velZ) < velEpsilon)
-            velZ = 0.0
-
-        this.velocity = Vec3d(velX, velY, velZ)
-    }
-
     override fun tick() {
         super.tick()
 
@@ -209,6 +221,8 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         this.firstUpdate = false
         this.world.profiler.pop()
     }
+
+    // Overrides
 
     override fun createSpawnPacket(): Packet<*> = SoulSpawnS2CPacket(this)
     override fun readCustomDataFromTag(tag: CompoundTag) = Unit
