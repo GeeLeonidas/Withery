@@ -1,7 +1,7 @@
 package io.github.geeleonidas.withery.network
 
 import io.github.geeleonidas.withery.entity.SoulEntity
-import io.github.geeleonidas.withery.util.WitheryClientPlayPacketListener
+import io.github.geeleonidas.withery.util.witheryImpl
 import net.minecraft.network.Packet
 import net.minecraft.network.PacketByteBuf
 import net.minecraft.network.listener.ClientPlayPacketListener
@@ -37,7 +37,7 @@ class SoulSpawnS2CPacket(soulEntity: SoulEntity): Packet<ClientPlayPacketListene
         offsetX = soulEntity.offsetPos.x
         offsetY = soulEntity.offsetPos.y
         offsetZ = soulEntity.offsetPos.z
-        accFactor = soulEntity.accFactor
+        accFactor = soulEntity.deltaFactor
     }
 
     override fun read(buf: PacketByteBuf) {
@@ -69,6 +69,6 @@ class SoulSpawnS2CPacket(soulEntity: SoulEntity): Packet<ClientPlayPacketListene
     }
 
     override fun apply(listener: ClientPlayPacketListener) {
-        (listener as WitheryClientPlayPacketListener).onSoulSpawn(this)
+        listener.witheryImpl.onSoulSpawn(this)
     }
 }

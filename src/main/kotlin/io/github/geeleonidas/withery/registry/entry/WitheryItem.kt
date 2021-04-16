@@ -1,6 +1,7 @@
-package io.github.geeleonidas.withery.registry
+package io.github.geeleonidas.withery.registry.entry
 
 import io.github.geeleonidas.withery.Withery
+import io.github.geeleonidas.withery.registry.WitheryItems
 import net.minecraft.item.Item
 import net.minecraft.util.registry.Registry
 

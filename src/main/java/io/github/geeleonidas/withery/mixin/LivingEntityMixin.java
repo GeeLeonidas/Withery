@@ -28,8 +28,6 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
 
     @Shadow public int hurtTime;
 
-    @Shadow public abstract float getMaxHealth();
-
     // Inject Overrides
 
     @Override
@@ -50,16 +48,10 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
         if (this.boundSouls.isEmpty())
             return;
 
-        float overflow = this.getPotentialHealth() - this.getMaxHealth();
-        this.unboundLastSouls((int) overflow);
-
         if (this.soulTime > 0) {
             this.soulTime--;
             return;
         }
-
-        if (this.hurtTime > 0)
-            return;
 
         this.soulTime = 20; // maxSoulTime
 
@@ -127,19 +119,19 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
         return (LivingEntity) ((Object) this);
     }
 
+    private SoulEntity getLastSoul() {
+        return this.boundSouls.get(this.boundSouls.size() - 1);
+    }
+
     protected void removeAllSouls() {
         for (SoulEntity soulEntity : this.boundSouls)
             soulEntity.remove();
         this.boundSouls.clear();
     }
 
-    protected void unboundLastSouls(int n) {
-        for (int i = 0; i < n; i++)
-            this.unboundSoul(this.boundSouls.get(this.boundSouls.size() - 1));
-    }
-
     protected void unboundAllSouls() {
-        this.unboundLastSouls(this.boundSouls.size());
+        while (!this.boundSouls.isEmpty())
+            this.unboundSoul(this.getLastSoul());
         this.soulTime = 0;
     }
 
@@ -165,7 +157,7 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
         }
 
         if (transferTarget != null)
-            ((WitheryLivingEntity) transferTarget).boundSoul(this.boundSouls.get(this.boundSouls.size() - 1));
+            ((WitheryLivingEntity) transferTarget).boundSoul(this.getLastSoul());
     }
 
     protected void loadSouls(ServerWorld world) {

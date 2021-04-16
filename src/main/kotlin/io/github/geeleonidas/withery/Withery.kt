@@ -1,8 +1,8 @@
 package io.github.geeleonidas.withery
 
 import io.github.geeleonidas.withery.event.WitheryEntityLoadEvent
+import io.github.geeleonidas.withery.registry.WitheryEntityTypes
 import io.github.geeleonidas.withery.registry.WitheryItems
-import io.github.geeleonidas.withery.registry.WitheryRegistry
 import net.fabricmc.fabric.api.client.itemgroup.FabricItemGroupBuilder
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents
 import net.minecraft.item.ItemStack
@@ -29,7 +29,9 @@ object Withery {
 }
 
 fun init() {
-    WitheryRegistry.load()
+    WitheryEntityTypes.load()
+    WitheryItems.load()
+
     ServerEntityEvents.ENTITY_LOAD.register(WitheryEntityLoadEvent)
     Withery.log("Minecraft withered away!")
 }

@@ -4,6 +4,7 @@ import io.github.geeleonidas.withery.Withery
 import io.github.geeleonidas.withery.network.SoulSpawnS2CPacket
 import io.github.geeleonidas.withery.registry.WitheryEntityTypes
 import io.github.geeleonidas.withery.util.WitheryLivingEntity
+import io.github.geeleonidas.withery.util.witheryImpl
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityType
 import net.minecraft.entity.LivingEntity
@@ -24,11 +25,12 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         const val maxVelLenSq = 0.5
         const val maxTargetLenSq = 144
         const val velEpsilon = 5E-4
+        const val baseLerpDelta = 0.01
     }
 
     var remainingVisibleTicks = maxVisibleTicks
         private set
-    private var isReadyToAbsorption = false
+    private var forceWandering = false
     var boundEntity: LivingEntity? = null
         set(value) {
             if (value == null) {
@@ -46,29 +48,25 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
             }
 
             this.remainingVisibleTicks = maxVisibleTicks
-            this.isReadyToAbsorption = false
             field = value
         }
-
-    private val isBoundEntityWithering: Boolean
-        get() = this.boundEntity!!.hasStatusEffect(StatusEffects.WITHER)
-    private val hasSoulAbsorptionStarted: Boolean
-        get() = !this.isBoundEntityWithering && this.isReadyToAbsorption
-
-    private fun boundTo(livingEntity: LivingEntity) =
-        (livingEntity as WitheryLivingEntity).boundSoul(this)
-    private fun unbound() =
-        (this.boundEntity as WitheryLivingEntity?)?.unboundSoul(this)
-    private fun isBoundTo(livingEntity: LivingEntity?) =
-        (livingEntity as WitheryLivingEntity?)?.containsSoul(this) ?: false
 
     var offsetPos: Vec3d = Vec3d(
         this.random.nextDouble() * 0.5 + 0.5,
         this.random.nextDouble() * 0.75,
         this.random.nextDouble() * 0.5 + 0.5
     ).rotateY(this.random.nextFloat() * 360)
-    var accFactor =
-        0.004 * (0.75 - this.random.nextDouble() * 0.5)
+    var deltaFactor = 0.75 - this.random.nextDouble() * 0.5
+
+    private val isReadyToAbsorption: Boolean
+        get() = !this.forceWandering && this.boundEntity?.hasStatusEffect(StatusEffects.WITHER) == false
+
+    private fun boundTo(livingEntity: LivingEntity) =
+        livingEntity.witheryImpl.boundSoul(this)
+    private fun unbound() =
+        this.boundEntity?.witheryImpl?.unboundSoul(this)
+    private fun isBoundTo(livingEntity: LivingEntity?) =
+        livingEntity != null && livingEntity.witheryImpl.containsSoul(this)
 
     init { this.noClip = true }
 
@@ -84,11 +82,11 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
 
     constructor(boundEntity: LivingEntity, spawnPacketInfo: Pair<Vec3d, Double>): this(boundEntity) {
         this.offsetPos = spawnPacketInfo.left
-        this.accFactor = spawnPacketInfo.right
+        this.deltaFactor = spawnPacketInfo.right
     }
 
     private fun getTargetPos(boundEntity: LivingEntity) =
-        if (this.hasSoulAbsorptionStarted)
+        if (this.isReadyToAbsorption)
             boundEntity.boundingBox.center
         else
             boundEntity.boundingBox.center.add(offsetPos)
@@ -114,29 +112,20 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
                 return
             }
 
-            val dot = toTarget.dotProduct(this.velocity)
+            val dot = this.velocity.dotProduct(toTarget)
+            if (dot < 0 || dot * dot < 0.5 * this.velocity.lengthSquared() * targetLenSq)
+                this.velocity = this.velocity.multiply(0.9)
 
-            if (dot < 0 || dot * dot / this.velocity.lengthSquared() < 0.5 * targetLenSq)
-                this.velocity = this.velocity.multiply(0.95)
-
-            // TODO: Rework acceleration
-
-            val velLenSq = this.velocity.lengthSquared()
-            val accLen = if (!this.hasSoulAbsorptionStarted)
-                this.accFactor * targetLenSq
+            val delta = if (!this.isReadyToAbsorption)
+                this.deltaFactor * baseLerpDelta
             else
-                this.accFactor * 4 * (1 - targetLenSq / maxTargetLenSq)
+                2 * this.deltaFactor * baseLerpDelta
+            val velLerp = this.velocity.multiply(1 - delta)
+            val toTargetLerp = toTarget.multiply(delta)
+            val newVel = velLerp.add(toTargetLerp)
 
-            if (velLenSq + accLen < maxVelLenSq)
-                this.velocity = this.velocity.add(toTarget.normalize().multiply(accLen))
-        }
-
-        if (!this.isBoundEntityWithering && !this.isReadyToAbsorption) {
-            if (this.velocity.lengthSquared() > 0.01) {
-                if (targetLenSq < 0.7)
-                    this.velocity = this.velocity.multiply(0.85)
-            } else
-                this.isReadyToAbsorption = true
+            if (newVel.lengthSquared() < maxVelLenSq)
+                this.velocity = newVel
         }
     }
 
@@ -166,10 +155,13 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
     private fun tickSoulAbsorption() {
         val boundEntity = this.boundEntity!!
 
+        if (!this.isReadyToAbsorption)
+            return
+
         val aoe = boundEntity.boundingBox.expand(-sideLength.toDouble() * 0.5)
         if (aoe.intersects(this.boundingBox)) {
             boundEntity.heal(1f)
-            this.kill()
+            this.kill() // TODO: Solve the sync issue by creating a S2C Packet
         }
     }
 
@@ -194,12 +186,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         if (this.boundEntity != null) {
             if (this.remainingVisibleTicks > 0)
                 this.remainingVisibleTicks--
-
-            if (this.isBoundEntityWithering)
-                this.isReadyToAbsorption = false
-
-            if (this.hasSoulAbsorptionStarted)
-                this.tickSoulAbsorption()
+            this.tickSoulAbsorption()
         } else
             this.tickSoulClaim()
 

@@ -1,6 +1,6 @@
 package io.github.geeleonidas.withery.item
 
-import io.github.geeleonidas.withery.registry.WitheryItem
+import io.github.geeleonidas.withery.registry.entry.WitheryItem
 import net.fabricmc.fabric.api.item.v1.FabricItemSettings
 import net.minecraft.item.Item
 
