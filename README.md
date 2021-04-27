@@ -1,6 +1,6 @@
 <p align="center">
-<b>cool gif goes here</b>
-Life-transfer, soul manipulation, mob crafting, wisps, corrupted mobs...
+<b>cool gif goes here</b><br>
+Life-transfer, soul manipulation, mob crafting, wisps, corrupted mobs...<br>
 <i>What could go wrong, right?</i>
 </p>
 <p align="center">
@@ -12,9 +12,9 @@ Life-transfer, soul manipulation, mob crafting, wisps, corrupted mobs...
   </a>
 </p>
 
-## Info
+## About
 Withery is a necromancy mod themed around the wither effect.
-My goal with this mod is to make it an original experience while keeping things simple enough, just like Vanilla Minecraft does (this isn't a Vanilla+ mod, though).
+Its goal is to deliver a unique experience while keeping things simple enough, just like Vanilla Minecraft does (this isn't a Vanilla+ mod, though).
 
 ## Roadmap
 For more information about the upcoming updates, check out Withery's Trello: https://trello.com/b/eu0KzETF/withery
