@@ -23,7 +23,7 @@ class SoulSpawnS2CPacket(soulEntity: SoulEntity): Packet<ClientPlayPacketListene
         private set
     var offsetZ: Double
         private set
-    var accFactor: Double
+    var delta: Double
         private set
 
     init {
@@ -37,7 +37,7 @@ class SoulSpawnS2CPacket(soulEntity: SoulEntity): Packet<ClientPlayPacketListene
         offsetX = soulEntity.offsetPos.x
         offsetY = soulEntity.offsetPos.y
         offsetZ = soulEntity.offsetPos.z
-        accFactor = soulEntity.deltaFactor
+        delta = soulEntity.delta
     }
 
     override fun read(buf: PacketByteBuf) {
@@ -51,7 +51,7 @@ class SoulSpawnS2CPacket(soulEntity: SoulEntity): Packet<ClientPlayPacketListene
         offsetX = buf.readDouble()
         offsetY = buf.readDouble()
         offsetZ = buf.readDouble()
-        accFactor = buf.readDouble()
+        delta = buf.readDouble()
     }
 
     override fun write(buf: PacketByteBuf) {
@@ -65,7 +65,7 @@ class SoulSpawnS2CPacket(soulEntity: SoulEntity): Packet<ClientPlayPacketListene
         buf.writeDouble(offsetX)
         buf.writeDouble(offsetY)
         buf.writeDouble(offsetZ)
-        buf.writeDouble(accFactor)
+        buf.writeDouble(delta)
     }
 
     override fun apply(listener: ClientPlayPacketListener) {

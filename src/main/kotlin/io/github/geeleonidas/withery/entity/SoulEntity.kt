@@ -22,7 +22,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         const val maxVisibleTicks = 20
         const val sideLength = 0.125f
         const val maxVelLenSq = 0.5
-        const val maxTargetLenSq = 144
+        const val maxToTargetLenSq = 144
         const val velEpsilon = 5E-4
         const val baseLerpDelta = 0.03
     }
@@ -55,10 +55,10 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
 
     var offsetPos: Vec3d = Vec3d(
         this.random.nextDouble() * 0.5 + 0.5,
-        this.random.nextDouble() * 0.75,
+        this.random.nextDouble() - 0.5,
         this.random.nextDouble() * 0.5 + 0.5
     ).rotateY(this.random.nextFloat() * 360)
-    var deltaFactor = 0.75 - this.random.nextDouble() * 0.5
+    var delta = baseLerpDelta * (0.75 - this.random.nextDouble() * 0.5)
 
     // Macros
 
@@ -90,7 +90,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
 
     constructor(boundEntity: LivingEntity, spawnPacketInfo: Pair<Vec3d, Double>): this(boundEntity) {
         this.offsetPos = spawnPacketInfo.left
-        this.deltaFactor = spawnPacketInfo.right
+        this.delta = spawnPacketInfo.right
     }
 
     // Util
@@ -124,8 +124,6 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
             return
         }
 
-        this.velocity = this.velocity.multiply(0.98)
-
         val boundEntity = this.boundEntity!!
 
         val thisPos = this.boundingBox.center
@@ -134,19 +132,23 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         val toTargetLenSq = toTarget.lengthSquared()
 
         if (toTargetLenSq > sideLength * sideLength) {
-            if (toTargetLenSq > maxTargetLenSq) {
+            if (toTargetLenSq > maxToTargetLenSq) {
                 this.teleport(targetPos.x, targetPos.y, targetPos.z)
                 this.velocity = Vec3d.ZERO
                 return
             }
 
-            val delta = if (!this.isReadyToAbsorption)
-                this.deltaFactor * baseLerpDelta
-            else
-                2 * this.deltaFactor * baseLerpDelta
-            val velLerp = this.velocity.multiply(1 - delta)
-            val toTargetLerp = toTarget.multiply(delta)
-            val newVel = velLerp.add(toTargetLerp)
+            this.velocity = this.velocity.multiply(0.95)
+
+            val newVel = if (!this.isReadyToAbsorption) {
+                val velLerp = this.velocity.multiply(1 - delta)
+                val toTargetLerp = toTarget.multiply(delta)
+                velLerp.add(toTargetLerp)
+            } else {
+                val simplifiedPosLerp = this.pos.multiply(-delta)
+                val targetPosLerp = targetPos.multiply(delta)
+                simplifiedPosLerp.add(targetPosLerp)
+            }
 
             if (newVel.lengthSquared() < maxVelLenSq)
                 this.velocity = newVel
