@@ -24,13 +24,13 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         const val maxVelLenSq = 0.5
         const val maxTargetLenSq = 144
         const val velEpsilon = 5E-4
-        const val baseLerpDelta = 0.01
+        const val baseLerpDelta = 0.03
     }
 
     // State variables
     var remainingVisibleTicks = maxVisibleTicks
         private set
-    var forceWandering = false
+    var forceWandering = true
     var boundEntity: LivingEntity? = null
         set(value) {
             if (value == null) {
@@ -120,28 +120,25 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
 
     private fun tickMoveToTarget() {
         if (this.boundEntity == null) {
-            if (this.velocity.lengthSquared() > 0.0)
-                this.velocity = this.velocity.multiply(0.82)
+            this.velocity = this.velocity.multiply(0.82)
             return
         }
+
+        this.velocity = this.velocity.multiply(0.98)
 
         val boundEntity = this.boundEntity!!
 
         val thisPos = this.boundingBox.center
         val targetPos = this.getTargetPos(boundEntity)
         val toTarget = targetPos.subtract(thisPos)
-        val targetLenSq = toTarget.lengthSquared()
+        val toTargetLenSq = toTarget.lengthSquared()
 
-        if (targetLenSq > sideLength * sideLength) {
-            if (targetLenSq > maxTargetLenSq) {
+        if (toTargetLenSq > sideLength * sideLength) {
+            if (toTargetLenSq > maxTargetLenSq) {
                 this.teleport(targetPos.x, targetPos.y, targetPos.z)
                 this.velocity = Vec3d.ZERO
                 return
             }
-
-            val dot = this.velocity.dotProduct(toTarget)
-            if (dot < 0 || dot * dot < 0.5 * this.velocity.lengthSquared() * targetLenSq)
-                this.velocity = this.velocity.multiply(0.9)
 
             val delta = if (!this.isReadyToAbsorption)
                 this.deltaFactor * baseLerpDelta
@@ -211,6 +208,10 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
 
     override fun baseTick() {
         this.world.profiler.push("entityBaseTick")
+
+        this.prevX = this.x
+        this.prevY = this.y
+        this.prevZ = this.z
         this.prevHorizontalSpeed = this.horizontalSpeed
         this.prevPitch = this.pitch
         this.prevYaw = this.yaw
