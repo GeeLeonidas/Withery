@@ -26,11 +26,9 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
 
     @Shadow public abstract boolean hasStatusEffect(StatusEffect effect);
 
-    @Shadow public int hurtTime;
+    @Shadow public abstract float getMaxHealth();
 
     // Inject Overrides
-
-    @Shadow public abstract float getMaxHealth();
 
     @Override
     protected void remove(CallbackInfo ci) {
