@@ -24,6 +24,8 @@ public abstract class EntityMixin {
 
     @Shadow public abstract Iterable<ItemStack> getItemsHand();
 
+    @Shadow public double prevX;
+
     @Inject(at = @At("HEAD"), method = "remove")
     protected void remove(CallbackInfo ci) { }
 

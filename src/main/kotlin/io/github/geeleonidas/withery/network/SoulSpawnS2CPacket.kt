@@ -25,6 +25,8 @@ class SoulSpawnS2CPacket(soulEntity: SoulEntity): Packet<ClientPlayPacketListene
         private set
     var delta: Double
         private set
+    var accFactor: Double
+        private set
 
     init {
         entityId = soulEntity.entityId
@@ -38,6 +40,7 @@ class SoulSpawnS2CPacket(soulEntity: SoulEntity): Packet<ClientPlayPacketListene
         offsetY = soulEntity.offsetPos.y
         offsetZ = soulEntity.offsetPos.z
         delta = soulEntity.delta
+        accFactor = soulEntity.accFactor
     }
 
     override fun read(buf: PacketByteBuf) {

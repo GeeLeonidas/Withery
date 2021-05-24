@@ -36,11 +36,12 @@ public abstract class ClientPlayNetworkHandlerMixin implements WitheryClientPlay
             packet.getOffsetZ()
         );
         double delta = packet.getDelta();
+        double accFactor = packet.getAccFactor();
 
         SoulEntity soulEntity;
         Entity bound = this.world.getEntityById(packet.getBoundId());
         if (bound instanceof LivingEntity)
-            soulEntity = new SoulEntity((LivingEntity) bound, new Pair<>(offsetPos, delta));
+            soulEntity = new SoulEntity((LivingEntity) bound, offsetPos, delta, accFactor);
         else
             soulEntity = new SoulEntity(this.world, x, y, z);
 

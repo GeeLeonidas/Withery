@@ -28,6 +28,10 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
 
     @Shadow public abstract float getMaxHealth();
 
+    private final ArrayList<SoulEntity> boundSouls = new ArrayList<>();
+    private int tagSoulQuantity = 0;
+    private int soulTime = 0;
+
     // Inject Overrides
 
     @Override
@@ -43,7 +47,7 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
 
     // Injects
 
-    @Inject(at= @At("TAIL"), method = "tick")
+    @Inject(at = @At("TAIL"), method = "tick")
     private void tick(CallbackInfo ci) {
         if (this.boundSouls.isEmpty())
             return;
@@ -112,11 +116,6 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
     }
 
     // Util functions
-
-    private final ArrayList<SoulEntity> boundSouls = new ArrayList<>();
-    private int tagSoulQuantity = 0;
-
-    private int soulTime = 0;
 
     @SuppressWarnings("all") // Evil wizardry 😈
     private LivingEntity getInstance() {

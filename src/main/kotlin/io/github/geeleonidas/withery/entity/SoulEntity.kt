@@ -59,6 +59,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         this.random.nextDouble() * 0.5 + 0.5
     ).rotateY(this.random.nextFloat() * 360)
     var delta = baseLerpDelta * (0.75 - this.random.nextDouble() * 0.5)
+    var accFactor = 0.05 * (1.2 - this.random.nextDouble() * 0.4)
 
     // Macros
 
@@ -88,18 +89,23 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         this.boundTo(boundEntity)
     }
 
-    constructor(boundEntity: LivingEntity, spawnPacketInfo: Pair<Vec3d, Double>): this(boundEntity) {
-        this.offsetPos = spawnPacketInfo.left
-        this.delta = spawnPacketInfo.right
+    constructor(boundEntity: LivingEntity, offsetPos: Vec3d, delta: Double, accFactor: Double): this(boundEntity) {
+        this.offsetPos = offsetPos
+        this.delta = delta
+        this.accFactor = accFactor
     }
 
     // Util
 
-    private fun getTargetPos(boundEntity: LivingEntity) =
-        if (this.isReadyToAbsorption)
-            boundEntity.boundingBox.center
+    private fun getTargetPos(boundEntity: LivingEntity): Vec3d {
+        val prevCenter = Vec3d(boundEntity.prevX, boundEntity.prevY, boundEntity.prevZ).add(
+            this.boundingBox.xLength / 2, this.boundingBox.yLength / 2, this.boundingBox.zLength / 2
+        )
+        return if (this.isReadyToAbsorption)
+            prevCenter
         else
-            boundEntity.boundingBox.center.add(offsetPos)
+            prevCenter.add(this.offsetPos)
+    }
 
     private fun floorVelocity() {
         var velX = this.velocity.x
@@ -118,7 +124,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
 
     // Tick-related functions
 
-    private fun tickMoveToTarget() {
+    private fun updateVelocity() {
         if (this.boundEntity == null) {
             this.velocity = this.velocity.multiply(0.82)
             return
@@ -138,12 +144,9 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
                 return
             }
 
-            this.velocity = this.velocity.multiply(0.95)
-
             val newVel = if (!this.isReadyToAbsorption) {
-                val velLerp = this.velocity.multiply(1 - delta)
-                val toTargetLerp = toTarget.multiply(delta)
-                velLerp.add(toTargetLerp)
+                val acc = toTarget.multiply(this.accFactor)
+                this.velocity.add(acc)
             } else {
                 val simplifiedPosLerp = this.pos.multiply(-delta)
                 val targetPosLerp = targetPos.multiply(delta)
@@ -201,9 +204,10 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         } else
             this.tickSoulClaim()
 
-        this.tickMoveToTarget()
-
+        this.updateVelocity()
+        this.velocity = this.velocity.multiply(0.98)
         this.floorVelocity()
+
         val newPos = this.pos.add(this.velocity)
         this.updatePosition(newPos.x, newPos.y, newPos.z)
     }
