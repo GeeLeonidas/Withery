@@ -17,7 +17,7 @@ Withery is a necromancy mod themed around the wither effect.
 Its goal is to deliver a unique experience while keeping things simple enough, just like Vanilla Minecraft does (this isn't a Vanilla+ mod, though).
 
 ## Roadmap
-For more information about the upcoming updates, check out Withery's Trello: https://trello.com/b/eu0KzETF/withery
+For more information about the upcoming updates, check out Withery's Trello: https://trello.com/b/M2FTAzxv/withery
 
 ## License
 Distributed under the GPL-3.0 License. See `LICENSE` for more information.
