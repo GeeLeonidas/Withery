@@ -11,7 +11,6 @@ import net.minecraft.entity.effect.StatusEffects
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.Packet
 import net.minecraft.server.world.ServerWorld
-import net.minecraft.util.Pair
 import net.minecraft.util.math.Vec3d
 import net.minecraft.world.World
 import org.apache.logging.log4j.Level
@@ -21,7 +20,6 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
     companion object {
         const val maxVisibleTicks = 20
         const val sideLength = 0.125f
-        const val maxVelLenSq = 0.5
         const val maxToTargetLenSq = 144
         const val velEpsilon = 5E-4
         const val baseLerpDelta = 0.03
@@ -59,7 +57,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         this.random.nextDouble() * 0.5 + 0.5
     ).rotateY(this.random.nextFloat() * 360)
     var delta = baseLerpDelta * (0.75 - this.random.nextDouble() * 0.5)
-    var accFactor = 0.05 * (1.2 - this.random.nextDouble() * 0.4)
+    var accFactor = 0.05 * (1.25 - this.random.nextDouble() * 0.5)
 
     // Macros
 
@@ -99,8 +97,12 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
 
     private fun getTargetPos(boundEntity: LivingEntity): Vec3d {
         val prevCenter = Vec3d(boundEntity.prevX, boundEntity.prevY, boundEntity.prevZ).add(
-            this.boundingBox.xLength / 2, this.boundingBox.yLength / 2, this.boundingBox.zLength / 2
+            0.0, boundEntity.boundingBox.yLength / 2, 0.0
         )
+
+        if (this.age % 30 == 0)
+            Withery.log(boundEntity.boundingBox.center.subtract(boundEntity.pos))
+
         return if (this.isReadyToAbsorption)
             prevCenter
         else
@@ -124,11 +126,9 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
 
     // Tick-related functions
 
-    private fun updateVelocity() {
-        if (this.boundEntity == null) {
-            this.velocity = this.velocity.multiply(0.82)
+    private fun tickVelocity() {
+        if (this.boundEntity == null)
             return
-        }
 
         val boundEntity = this.boundEntity!!
 
@@ -144,7 +144,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
                 return
             }
 
-            val newVel = if (!this.isReadyToAbsorption) {
+            this.velocity = if (!this.isReadyToAbsorption) {
                 val acc = toTarget.multiply(this.accFactor)
                 this.velocity.add(acc)
             } else {
@@ -152,9 +152,6 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
                 val targetPosLerp = targetPos.multiply(delta)
                 simplifiedPosLerp.add(targetPosLerp)
             }
-
-            if (newVel.lengthSquared() < maxVelLenSq)
-                this.velocity = newVel
         }
     }
 
@@ -204,12 +201,12 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         } else
             this.tickSoulClaim()
 
-        this.updateVelocity()
-        this.velocity = this.velocity.multiply(0.98)
-        this.floorVelocity()
-
+        this.tickVelocity()
         val newPos = this.pos.add(this.velocity)
         this.updatePosition(newPos.x, newPos.y, newPos.z)
+
+        this.velocity = this.velocity.multiply(0.92)
+        this.floorVelocity()
     }
 
     override fun baseTick() {
