@@ -56,15 +56,13 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
         for (int i = 0; i < overflow; i++)
             this.unboundSoul(this.getLastSoul());
 
-        if (this.soulTime > 0) {
+        if (this.soulTime <= 0) {
+            this.soulTime = 10; // maxSoulTime
+
+            if (this.hasStatusEffect(StatusEffects.WITHER))
+                this.tickSoulTransfer();
+        } else
             this.soulTime--;
-            return;
-        }
-
-        this.soulTime = 20; // maxSoulTime
-
-        if (this.hasStatusEffect(StatusEffects.WITHER)) // Checks every 20 ticks
-            this.tickSoulTransfer();
     }
 
     @Inject(at = @At("HEAD"), method = "onDeath")

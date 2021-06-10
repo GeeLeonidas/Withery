@@ -14,15 +14,16 @@ import net.minecraft.server.world.ServerWorld
 import net.minecraft.util.math.Vec3d
 import net.minecraft.world.World
 import org.apache.logging.log4j.Level
-import kotlin.math.abs
 
 open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(type, world) {
     companion object {
-        const val maxVisibleTicks = 20
         const val sideLength = 0.125f
-        const val maxToTargetLenSq = 144
-        const val velEpsilon = 5E-4
-        const val baseLerpDelta = 0.03
+        const val maxVisibleTicks = 20
+
+        private const val maxToTargetLen = 12.0
+        const val maxToTargetLenSq = maxToTargetLen * maxToTargetLen
+        private const val velLenEpsilon = 5E-4
+        const val velLenSqEpsilon = velLenEpsilon * velLenEpsilon
     }
 
     // State variables
@@ -56,22 +57,26 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         this.random.nextDouble() - 0.5,
         this.random.nextDouble() * 0.5 + 0.5
     ).rotateY(this.random.nextFloat() * 360)
-    var delta = baseLerpDelta * (0.75 - this.random.nextDouble() * 0.5)
     var accFactor = 0.05 * (1.25 - this.random.nextDouble() * 0.5)
 
     // Macros
 
     private val isReadyToAbsorption: Boolean
         get() = !this.forceWandering && this.boundEntity?.hasStatusEffect(StatusEffects.WITHER) == false
-    private val LivingEntity.witheryImpl: WitheryLivingEntity
+    private val LivingEntity.moddedLiving: WitheryLivingEntity
         get() = this as WitheryLivingEntity
 
     private fun boundTo(livingEntity: LivingEntity) =
-        livingEntity.witheryImpl.boundSoul(this)
+        livingEntity.moddedLiving.boundSoul(this)
     private fun unbound() =
-        this.boundEntity?.witheryImpl?.unboundSoul(this)
+        this.boundEntity?.moddedLiving?.unboundSoul(this)
     private fun isBoundTo(livingEntity: LivingEntity?) =
-        livingEntity != null && livingEntity.witheryImpl.containsSoul(this)
+        livingEntity != null && livingEntity.moddedLiving.containsSoul(this)
+
+    private fun updatePosition(pos: Vec3d) =
+        this.updatePosition(pos.x, pos.y, pos.z)
+    private fun addVelocity(delta: Vec3d) =
+        this.addVelocity(delta.x, delta.y, delta.z)
 
     // Init
 
@@ -82,76 +87,56 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
     }
 
     constructor(boundEntity: LivingEntity): this(WitheryEntityTypes.soulEntity, boundEntity.world) {
-        val pos = boundEntity.boundingBox.center
-        this.updatePosition(pos.x, pos.y, pos.z)
+        this.updatePosition(boundEntity.boundingBox.center)
         this.boundTo(boundEntity)
     }
 
-    constructor(boundEntity: LivingEntity, offsetPos: Vec3d, delta: Double, accFactor: Double): this(boundEntity) {
+    constructor(boundEntity: LivingEntity, offsetPos: Vec3d, accFactor: Double): this(boundEntity) {
         this.offsetPos = offsetPos
-        this.delta = delta
         this.accFactor = accFactor
     }
 
     // Util
 
     private fun getTargetPos(boundEntity: LivingEntity): Vec3d {
-        val prevCenter = Vec3d(boundEntity.prevX, boundEntity.prevY, boundEntity.prevZ).add(
+        val target = boundEntity.pos.add(
             0.0, boundEntity.boundingBox.yLength / 2, 0.0
         )
 
-        if (this.age % 30 == 0)
-            Withery.log(boundEntity.boundingBox.center.subtract(boundEntity.pos))
-
         return if (this.isReadyToAbsorption)
-            prevCenter
+            target
         else
-            prevCenter.add(this.offsetPos)
+            target.add(this.offsetPos)
     }
 
-    private fun floorVelocity() {
-        var velX = this.velocity.x
-        var velY = this.velocity.y
-        var velZ = this.velocity.z
-
-        if (abs(velX) < velEpsilon)
-            velX = 0.0
-        if (abs(velY) < velEpsilon)
-            velY = 0.0
-        if (abs(velZ) < velEpsilon)
-            velZ = 0.0
-
-        this.velocity = Vec3d(velX, velY, velZ)
+    private fun setVelocityToZero() {
+        this.velocity = Vec3d.ZERO
+        this.velocityModified = true
     }
 
     // Tick-related functions
 
-    private fun tickVelocity() {
+    private fun tickAcceleration() {
         if (this.boundEntity == null)
             return
 
         val boundEntity = this.boundEntity!!
 
-        val thisPos = this.boundingBox.center
+        val thisBoundingBox = this.boundingBox
         val targetPos = this.getTargetPos(boundEntity)
-        val toTarget = targetPos.subtract(thisPos)
-        val toTargetLenSq = toTarget.lengthSquared()
 
-        if (toTargetLenSq > sideLength * sideLength) {
-            if (toTargetLenSq > maxToTargetLenSq) {
+        if (!thisBoundingBox.contains(targetPos)) {
+            val thisPos = thisBoundingBox.center
+            val toTarget = targetPos.subtract(thisPos)
+
+            if (toTarget.lengthSquared() > maxToTargetLenSq) {
                 this.teleport(targetPos.x, targetPos.y, targetPos.z)
-                this.velocity = Vec3d.ZERO
+                this.setVelocityToZero()
                 return
             }
 
-            this.velocity = if (!this.isReadyToAbsorption) {
-                val acc = toTarget.multiply(this.accFactor)
-                this.velocity.add(acc)
-            } else {
-                val simplifiedPosLerp = this.pos.multiply(-delta)
-                val targetPosLerp = targetPos.multiply(delta)
-                simplifiedPosLerp.add(targetPosLerp)
-            }
+            val deltaVel = toTarget.multiply(this.accFactor)
+            this.addVelocity(deltaVel)
         }
     }
 
@@ -201,17 +186,19 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         } else
             this.tickSoulClaim()
 
-        this.tickVelocity()
-        val newPos = this.pos.add(this.velocity)
-        this.updatePosition(newPos.x, newPos.y, newPos.z)
+        this.tickAcceleration()
+        this.updatePosition(this.pos.add(this.velocity))
 
-        this.velocity = this.velocity.multiply(0.92)
-        this.floorVelocity()
+        val velLenSq = this.velocity.lengthSquared()
+        if (velLenSq > 0) {
+            this.addVelocity(this.velocity.multiply(-0.08))
+            if (velLenSq < velLenSqEpsilon)
+                this.setVelocityToZero()
+        }
     }
 
     override fun baseTick() {
         this.world.profiler.push("entityBaseTick")
-
         this.prevX = this.x
         this.prevY = this.y
         this.prevZ = this.z
