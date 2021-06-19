@@ -142,9 +142,10 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
 
     private fun tickSoulClaim() {
         val aoe = this.boundingBox.expand(2.0)
-        val withering = this.world.getEntitiesByClass(LivingEntity::class.java, aoe) { entity ->
-            entity.hasStatusEffect(StatusEffects.WITHER) &&
-                (entity as WitheryLivingEntity).potentialHealth < entity.maxHealth
+        val withering = this.world.getEntitiesByClass(LivingEntity::class.java, aoe) {
+            entity ->
+                entity.hasStatusEffect(StatusEffects.WITHER) &&
+                entity.moddedLiving.soulQuantity + entity.health < entity.maxHealth
         }
 
         if (withering.isEmpty())

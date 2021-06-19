@@ -52,7 +52,7 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
         if (this.boundSouls.isEmpty())
             return;
 
-        float overflow = this.getPotentialHealth() - this.getMaxHealth();
+        float overflow = this.getSoulQuantity() + this.getHealth() - this.getMaxHealth();
         for (int i = 0; i < overflow; i++)
             this.unboundSoul(this.getLastSoul());
 
@@ -104,8 +104,8 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
     }
 
     @Override
-    public float getPotentialHealth() {
-        return this.getHealth() + this.boundSouls.size();
+    public int getSoulQuantity() {
+        return this.boundSouls.size();
     }
 
     @Override
@@ -145,11 +145,12 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
         double lowestDist = -1;
         for (LivingEntity otherEntity : allLiving) {
             double currentDist = otherEntity.getPos().squaredDistanceTo(this.getPos());
-            float otherPotHealth = ((WitheryLivingEntity) otherEntity).getPotentialHealth();
+            float otherEnergy =
+                ((WitheryLivingEntity) otherEntity).getSoulQuantity() + otherEntity.getHealth();
             if (
                 otherEntity.hasStatusEffect(StatusEffects.WITHER) &&
-                otherPotHealth < otherEntity.getMaxHealth() &&
-                otherPotHealth < this.getPotentialHealth() &&
+                otherEnergy < otherEntity.getMaxHealth() &&
+                otherEnergy < this.getSoulQuantity() + this.getHealth() &&
                 (transferTarget == null || currentDist < lowestDist)
             ) {
                 transferTarget = otherEntity;

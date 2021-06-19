@@ -7,7 +7,7 @@ public interface WitheryLivingEntity {
     void boundSoul(SoulEntity soulEntity);
     void unboundSoul(SoulEntity soulEntity);
     boolean containsSoul(SoulEntity soulEntity);
-    float getPotentialHealth();
+    int getSoulQuantity();
 
     void onLoad(ServerWorld world);
 }
