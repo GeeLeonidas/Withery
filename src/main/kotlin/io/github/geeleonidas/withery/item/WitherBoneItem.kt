@@ -2,6 +2,7 @@ package io.github.geeleonidas.withery.item
 
 import io.github.geeleonidas.withery.registry.entry.WitheryItem
 import net.fabricmc.fabric.api.item.v1.FabricItemSettings
+import net.minecraft.entity.LivingEntity
 import net.minecraft.entity.effect.StatusEffectInstance
 import net.minecraft.entity.effect.StatusEffects
 import net.minecraft.entity.player.PlayerEntity
@@ -18,15 +19,17 @@ class WitherBoneItem: Item(FabricItemSettings()), WitheryItem {
         val boneItemStack = user.getStackInHand(hand)
 
         if (user.hasStatusEffect(StatusEffects.WITHER))
-            return TypedActionResult.pass(boneItemStack)
+            return TypedActionResult.fail(boneItemStack)
 
-        user.addStatusEffect(
-            StatusEffectInstance(
-                StatusEffects.WITHER,
-                5 * 20,
-                1
+        val aof = user.boundingBox.expand(5.0)
+        for (entity in world.getEntitiesByClass(LivingEntity::class.java, aof, null))
+            entity.addStatusEffect(
+                StatusEffectInstance(
+                    StatusEffects.WITHER,
+                    5 * 20,
+                    1
+                )
             )
-        )
         return TypedActionResult.success(boneItemStack)
     }
 }
