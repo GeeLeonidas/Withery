@@ -111,6 +111,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
 
     private fun setVelocityToZero() {
         this.velocity = Vec3d.ZERO
+        this.velocityDirty = true
         this.velocityModified = true
     }
 

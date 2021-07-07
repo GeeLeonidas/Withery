@@ -32,15 +32,16 @@ public abstract class StatusEffectMixin {
 
         if (isSoulHarvestValid) {
             if (entity.getHealth() > 1) {
-                int soulQuantity = ((WitheryLivingEntity) entity).getSoulQuantity();
-                float soulEnergy = soulQuantity + entity.getHealth();
+                int entitySoulQuantity = ((WitheryLivingEntity) entity).getSoulQuantity();
+                float entityHealth = entity.getHealth();
 
                 List<LivingEntity> weakerEntities = entity.world.getEntitiesByClass(
                     LivingEntity.class,
                     entity.getBoundingBox().expand(4),
-                    e -> e.hasStatusEffect(StatusEffects.WITHER) &&
-                         e.getMaxHealth() - e.getHealth() > soulQuantity &&
-                        ((WitheryLivingEntity) e).getSoulQuantity() + e.getHealth() < soulEnergy
+                    it ->
+                        it.getHealth() < entityHealth &&
+                        it.hasStatusEffect(StatusEffects.WITHER) &&
+                        it.getMaxHealth() - it.getHealth() > entitySoulQuantity
                 );
 
                 if (!weakerEntities.isEmpty()) {

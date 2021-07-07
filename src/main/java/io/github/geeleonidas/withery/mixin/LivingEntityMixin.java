@@ -10,6 +10,7 @@ import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -49,15 +50,15 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
 
     @Inject(at = @At("TAIL"), method = "tick")
     private void tick(CallbackInfo ci) {
-        if (this.boundSouls.isEmpty())
-            return;
-
         float overflow = this.getSoulQuantity() + this.getHealth() - this.getMaxHealth();
         for (int i = 0; i < overflow; i++)
             this.unboundSoul(this.getLastSoul());
 
         if (this.soulTime <= 0) {
             this.soulTime = 10; // maxSoulTime
+
+            if (this.getSoulQuantity() == 0)
+                return;
 
             if (this.hasStatusEffect(StatusEffects.WITHER))
                 this.tickSoulTransfer();
