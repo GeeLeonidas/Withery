@@ -1,15 +1,12 @@
 package io.github.geeleonidas.withery.mixin;
 
-import io.github.geeleonidas.withery.Withery;
 import io.github.geeleonidas.withery.entity.SoulEntity;
 import io.github.geeleonidas.withery.util.WitheryLivingEntity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.util.math.Box;
 import net.minecraft.world.World;
-import org.apache.logging.log4j.Level;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
