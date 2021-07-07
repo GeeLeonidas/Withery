@@ -41,7 +41,7 @@ public abstract class ClientPlayNetworkHandlerMixin implements WitheryClientPlay
         if (bound instanceof LivingEntity)
             soulEntity = new SoulEntity((LivingEntity) bound, offsetPos, accFactor);
         else
-            soulEntity = new SoulEntity(this.world, x, y, z);
+            soulEntity = new SoulEntity(this.world, x, y, z, offsetPos, accFactor);
 
         soulEntity.updateTrackedPosition(x, y, z);
         soulEntity.setEntityId(packet.getEntityId());

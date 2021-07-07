@@ -6,8 +6,10 @@ import io.github.geeleonidas.withery.registry.WitheryEntityTypes
 import io.github.geeleonidas.withery.util.WitheryLivingEntity
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityType
+import net.minecraft.entity.ExperienceOrbEntity
 import net.minecraft.entity.LivingEntity
 import net.minecraft.entity.effect.StatusEffects
+import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.Packet
 import net.minecraft.server.world.ServerWorld
@@ -80,10 +82,15 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
 
     // Init
 
-    init { this.noClip = true }
+    init { this.noClip = false }
 
     constructor(world: World, x: Double, y: Double, z: Double): this(WitheryEntityTypes.soulEntity, world) {
         this.updatePosition(x, y, z)
+    }
+
+    constructor(world: World, x: Double, y: Double, z: Double, offsetPos: Vec3d, accFactor: Double): this(world, x, y, z) {
+        this.offsetPos = offsetPos
+        this.accFactor = accFactor
     }
 
     constructor(boundEntity: LivingEntity): this(WitheryEntityTypes.soulEntity, boundEntity.world) {
@@ -204,9 +211,13 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         this.prevX = this.x
         this.prevY = this.y
         this.prevZ = this.z
+
         this.prevHorizontalSpeed = this.horizontalSpeed
         this.prevPitch = this.pitch
         this.prevYaw = this.yaw
+
+        this.velocityDirty = false
+        this.velocityModified = false
 
         if (this.y < -64.0)
             this.destroy()
@@ -228,6 +239,11 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         else
             false
     override fun moveToWorld(destination: ServerWorld): Entity? = null
+    override fun isLogicalSideForUpdatingMovement() =
+        if (this.boundEntity !is PlayerEntity)
+            super.isLogicalSideForUpdatingMovement()
+        else
+            (this.boundEntity as PlayerEntity).isMainPlayer
 
     override fun kill() {
         this.unbound()
