@@ -245,15 +245,27 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
             (this.boundEntity as PlayerEntity).isMainPlayer
 
     override fun kill() {
-        this.unbound()
-        this.remainingVisibleTicks = 0
+        if (!this.world.isClient) {
+            this.unbound()
+            this.world.sendEntityStatus(this, 3)
+        }
         super.kill()
     }
 
     override fun destroy() {
-        this.unbound()
-        this.remainingVisibleTicks = 0
+        if (!this.world.isClient) {
+            this.unbound()
+            this.world.sendEntityStatus(this, 3)
+        }
         super.destroy()
+    }
+
+    override fun handleStatus(status: Byte) {
+        if (status == 3.toByte()) { // onDeath
+            this.unbound()
+            this.remainingVisibleTicks = 0
+        }
+        super.handleStatus(status)
     }
 
     override fun canUsePortals() = false
