@@ -52,15 +52,14 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
         for (int i = 0; i < overflow; i++)
             this.unboundSoul(this.getLastSoul());
 
-        if (this.soulTime <= 0) {
-            this.soulTime = 10; // maxSoulTime
+        if (this.soulTime <= 0)
+            if (this.getSoulQuantity() > 0 && !this.isInvulnerableTo(DamageSource.WITHER)) {
+                this.soulTime = 10; // maxSoulTime
 
-            if (this.getSoulQuantity() == 0)
-                return;
-
-            if (this.hasStatusEffect(StatusEffects.WITHER))
-                this.tickSoulTransfer();
-        } else
+                if (this.hasStatusEffect(StatusEffects.WITHER))
+                    this.tickSoulTransfer();
+            }
+        else
             this.soulTime--;
     }
 
@@ -143,6 +142,7 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
             LivingEntity.class,
             this.getBoundingBox().expand(4), 
             it ->
+                it.isAlive() &&
                 it.getHealth() < entityHealth &&
                 it.hasStatusEffect(StatusEffects.WITHER)
         );

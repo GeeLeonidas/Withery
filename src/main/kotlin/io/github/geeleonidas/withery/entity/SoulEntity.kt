@@ -186,6 +186,8 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
 
     override fun tick() {
         super.tick()
+        if (this.removed)
+            return
 
         if (this.boundEntity != null) {
             if (this.remainingVisibleTicks > 0)
