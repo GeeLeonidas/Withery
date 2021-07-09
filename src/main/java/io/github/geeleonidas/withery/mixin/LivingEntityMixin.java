@@ -9,7 +9,6 @@ import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.Box;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -137,20 +136,25 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
     }
 
     protected void tickSoulTransfer() {
-        Box aoe = this.getBoundingBox().expand(4);
-        List<LivingEntity> allLiving = this.world.getEntitiesByClass(LivingEntity.class, aoe, null);
-        allLiving.remove(this.getInstance());
-
-        LivingEntity transferTarget = null;
+        float entityHealth = this.getHealth();
+        int entitySoulQuantity = this.getSoulQuantity();
+        
+        List<LivingEntity> allLiving = this.world.getEntitiesByClass(
+            LivingEntity.class,
+            this.getBoundingBox().expand(4), 
+            it ->
+                it.getHealth() < entityHealth &&
+                it.hasStatusEffect(StatusEffects.WITHER)
+        );
+        
         double lowestDist = -1;
+        LivingEntity transferTarget = null;
         for (LivingEntity otherEntity : allLiving) {
             double currentDist = otherEntity.getPos().squaredDistanceTo(this.getPos());
             float otherEnergy =
                 ((WitheryLivingEntity) otherEntity).getSoulQuantity() + otherEntity.getHealth();
             if (
-                otherEntity.hasStatusEffect(StatusEffects.WITHER) &&
-                otherEnergy < otherEntity.getMaxHealth() &&
-                otherEnergy < this.getSoulQuantity() + this.getHealth() &&
+                otherEntity.getMaxHealth() - otherEnergy >= entitySoulQuantity &&
                 (transferTarget == null || currentDist < lowestDist)
             ) {
                 transferTarget = otherEntity;
@@ -158,8 +162,12 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
             }
         }
 
-        if (transferTarget != null)
-            ((WitheryLivingEntity) transferTarget).boundSoul(this.getLastSoul());
+        if (transferTarget != null) {
+            SoulEntity lastSoul = this.getLastSoul();
+            WitheryLivingEntity target = (WitheryLivingEntity) transferTarget;
+            this.unboundSoul(lastSoul);
+            target.boundSoul(lastSoul);
+        }
     }
 
     protected void loadSouls(ServerWorld world) {

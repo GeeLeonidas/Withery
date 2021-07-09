@@ -37,13 +37,16 @@ public abstract class StatusEffectMixin {
                     entity.getBoundingBox().expand(4),
                     it ->
                         it.getHealth() < entityHealth &&
-                        it.hasStatusEffect(StatusEffects.WITHER) &&
-                        it.getMaxHealth() - it.getHealth() > entitySoulQuantity
+                        it.hasStatusEffect(StatusEffects.WITHER)
                 );
 
-                if (!weakerEntities.isEmpty()) {
-                    entity.world.spawnEntity(new SoulEntity(entity));
-                    return; // Prevents applyUpdateEffect from being cancelled
+                for (LivingEntity otherEntity : weakerEntities) {
+                    float otherEnergy =
+                        otherEntity.getHealth() + ((WitheryLivingEntity) otherEntity).getSoulQuantity();
+                    if (otherEntity.getMaxHealth() - otherEnergy > entitySoulQuantity) {
+                        entity.world.spawnEntity(new SoulEntity(entity));
+                        return; // Prevents applyUpdateEffect from being cancelled
+                    }
                 }
             }
 
