@@ -28,29 +28,57 @@ public abstract class StatusEffectMixin {
             entity.world.getRegistryKey() != World.NETHER;
 
         if (isSoulHarvestValid) {
-            if (entity.getHealth() > 1) {
-                int entitySoulQuantity = ((WitheryLivingEntity) entity).getSoulQuantity();
-                float entityHealth = entity.getHealth();
+            int entitySoulQuantity = ((WitheryLivingEntity) entity).getSoulQuantity();
+            float entityHealth = entity.getHealth();
 
-                List<LivingEntity> weakerEntities = entity.world.getEntitiesByClass(
-                    LivingEntity.class,
-                    entity.getBoundingBox().expand(4),
-                    it ->
-                        it.getHealth() < entityHealth &&
-                        it.hasStatusEffect(StatusEffects.WITHER)
-                );
+            List<LivingEntity> weakerEntities = entity.world.getEntitiesByClass(
+                LivingEntity.class,
+                entity.getBoundingBox().expand(4),
+                it ->
+                    it.getHealth() < entityHealth &&
+                    it.hasStatusEffect(StatusEffects.WITHER)
+            );
 
-                for (LivingEntity otherEntity : weakerEntities) {
-                    float otherEnergy =
-                        otherEntity.getHealth() + ((WitheryLivingEntity) otherEntity).getSoulQuantity();
-                    if (otherEntity.getMaxHealth() - otherEnergy > entitySoulQuantity) {
-                        entity.world.spawnEntity(new SoulEntity(entity));
-                        return; // Prevents applyUpdateEffect from being cancelled
-                    }
+            LivingEntity transferTarget = null;
+            for (LivingEntity otherEntity : weakerEntities) {
+                float otherEnergy = this.getEntityEnergy(otherEntity);
+                float missingEnergy = otherEntity.getMaxHealth() - otherEnergy;
+
+                if (missingEnergy <= 0)
+                    continue;
+
+                if (entitySoulQuantity == 0 && entityHealth != 1) {
+                    entity.world.spawnEntity(new SoulEntity(entity));
+                    return; // Prevents applyUpdateEffect from being cancelled
                 }
+
+                if (entitySoulQuantity <= 0)
+                    continue;
+
+                if (transferTarget != null) {
+                    float transferTargetEnergy = this.getEntityEnergy(transferTarget);
+                    boolean isTransferValid =
+                        otherEnergy < transferTargetEnergy ||
+                        otherEnergy == transferTargetEnergy &&
+                        otherEntity.distanceTo(entity) < transferTarget.distanceTo(entity);
+                    if (isTransferValid)
+                        transferTarget = otherEntity;
+                } else
+                    transferTarget = otherEntity;
             }
+
+            if (transferTarget != null)
+                this.transferEntitySoulTo(entity, transferTarget);
 
             ci.cancel();
         }
+    }
+
+    private float getEntityEnergy(LivingEntity entity) {
+        return entity.getHealth() + ((WitheryLivingEntity) entity).getSoulQuantity();
+    }
+
+    private void transferEntitySoulTo(LivingEntity source, LivingEntity target) {
+        ((WitheryLivingEntity) source).transferSoulTo((WitheryLivingEntity) target);
     }
 }

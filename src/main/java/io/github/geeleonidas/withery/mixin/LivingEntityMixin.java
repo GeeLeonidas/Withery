@@ -5,8 +5,6 @@ import io.github.geeleonidas.withery.util.WitheryLivingEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.entity.effect.StatusEffect;
-import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.world.ServerWorld;
 import org.spongepowered.asm.mixin.Mixin;
@@ -17,19 +15,17 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.ArrayList;
-import java.util.List;
 
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityMixin extends EntityMixin implements WitheryLivingEntity {
     @Shadow public abstract float getHealth();
 
-    @Shadow public abstract boolean hasStatusEffect(StatusEffect effect);
-
     @Shadow public abstract float getMaxHealth();
+
+    @Shadow protected abstract void scheduleVelocityUpdate();
 
     private final ArrayList<SoulEntity> boundSouls = new ArrayList<>();
     private int tagSoulQuantity = 0;
-    private int soulTime = 0;
 
     // Inject Overrides
 
@@ -51,16 +47,6 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
         float overflow = this.getSoulQuantity() + this.getHealth() - this.getMaxHealth();
         for (int i = 0; i < overflow; i++)
             this.unboundSoul(this.getLastSoul());
-
-        if (this.soulTime <= 0)
-            if (this.getSoulQuantity() > 0 && !this.isInvulnerableTo(DamageSource.WITHER)) {
-                this.soulTime = 10; // maxSoulTime
-
-                if (this.hasStatusEffect(StatusEffects.WITHER))
-                    this.tickSoulTransfer();
-            }
-        else
-            this.soulTime--;
     }
 
     @Inject(at = @At("HEAD"), method = "onDeath")
@@ -94,6 +80,13 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
         this.boundSouls.remove(soulEntity);
         soulEntity.setBoundEntity(null);
         this.tagSoulQuantity--;
+    }
+
+    @Override
+    public void transferSoulTo(WitheryLivingEntity target) {
+        SoulEntity lastSoul = this.getLastSoul();
+        this.unboundSoul(lastSoul);
+        target.boundSoul(lastSoul);
     }
 
     @Override
@@ -131,43 +124,6 @@ public abstract class LivingEntityMixin extends EntityMixin implements WitheryLi
     protected void unboundAllSouls() {
         while (!this.boundSouls.isEmpty())
             this.unboundSoul(this.getLastSoul());
-        this.soulTime = 0;
-    }
-
-    protected void tickSoulTransfer() {
-        float entityHealth = this.getHealth();
-        int entitySoulQuantity = this.getSoulQuantity();
-        
-        List<LivingEntity> allLiving = this.world.getEntitiesByClass(
-            LivingEntity.class,
-            this.getBoundingBox().expand(4), 
-            it ->
-                it.isAlive() &&
-                it.getHealth() < entityHealth &&
-                it.hasStatusEffect(StatusEffects.WITHER)
-        );
-        
-        double lowestDist = -1;
-        LivingEntity transferTarget = null;
-        for (LivingEntity otherEntity : allLiving) {
-            double currentDist = otherEntity.getPos().squaredDistanceTo(this.getPos());
-            float otherEnergy =
-                ((WitheryLivingEntity) otherEntity).getSoulQuantity() + otherEntity.getHealth();
-            if (
-                otherEntity.getMaxHealth() - otherEnergy >= entitySoulQuantity &&
-                (transferTarget == null || currentDist < lowestDist)
-            ) {
-                transferTarget = otherEntity;
-                lowestDist = currentDist;
-            }
-        }
-
-        if (transferTarget != null) {
-            SoulEntity lastSoul = this.getLastSoul();
-            WitheryLivingEntity target = (WitheryLivingEntity) transferTarget;
-            this.unboundSoul(lastSoul);
-            target.boundSoul(lastSoul);
-        }
     }
 
     protected void loadSouls(ServerWorld world) {

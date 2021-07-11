@@ -8,7 +8,6 @@ import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityType
 import net.minecraft.entity.LivingEntity
 import net.minecraft.entity.effect.StatusEffects
-import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.Packet
 import net.minecraft.server.world.ServerWorld
@@ -180,7 +179,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         val aoe = boundEntity.boundingBox.expand(-sideLength.toDouble() * 0.5)
         if (aoe.intersects(this.boundingBox)) {
             boundEntity.heal(1f)
-            this.kill() // TODO: Solve the sync issue by creating a S2C Packet
+            this.kill()
         }
     }
 
@@ -217,9 +216,6 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         this.prevPitch = this.pitch
         this.prevYaw = this.yaw
 
-        this.velocityDirty = false
-        this.velocityModified = false
-
         if (this.y < -64.0)
             this.destroy()
 
@@ -240,11 +236,6 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         else
             false
     override fun moveToWorld(destination: ServerWorld): Entity? = null
-    override fun isLogicalSideForUpdatingMovement() =
-        if (this.boundEntity !is PlayerEntity)
-            super.isLogicalSideForUpdatingMovement()
-        else
-            (this.boundEntity as PlayerEntity).isMainPlayer
 
     override fun kill() {
         if (!this.world.isClient) {
@@ -270,6 +261,7 @@ open class SoulEntity(type: EntityType<out SoulEntity>, world: World): Entity(ty
         super.handleStatus(status)
     }
 
+    override fun isLogicalSideForUpdatingMovement() = true
     override fun canUsePortals() = false
     override fun isAttackable() = false
     override fun hasNoGravity() = true
